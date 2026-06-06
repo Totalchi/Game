@@ -3,6 +3,10 @@
 > In a flick game the HUD *is* the gameplay — if the player (and the spectator) can't read the beat,
 > the element, and the timing at a glance, nothing else matters. Clarity is the prime directive.
 
+> 🎨 **Live Figma mockup of the combat HUD:**
+> https://www.figma.com/design/VqqruU7nrIDIXfSZkiRW5W
+> (Built from the spec below, using the canonical element colours from ART_BIBLE.md. Open to edit/iterate.)
+
 ## 1. Principles
 
 1. **The beat is unmissable.** The Knell pulse is the most prominent element on screen — visual + audio + (optional) haptic.
