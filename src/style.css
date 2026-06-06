@@ -1,0 +1,28 @@
+:root {
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #08080c;
+  color: #e8e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+#app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+canvas {
+  border: 1px solid #2a2a38;
+  border-radius: 8px;
+  box-shadow: 0 0 60px rgba(255, 90, 60, 0.08);
+  max-width: 100%;
+  image-rendering: optimizeQuality;
+}

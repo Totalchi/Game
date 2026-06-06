@@ -11,17 +11,25 @@ gate before the next.
 
 **Gate:** docs agreed, repo scaffolds and runs a blank scene.
 
-## Phase 1 — The Flick Prototype (prove the core)
+## Phase 1 — The Flick Prototype (prove the core)  🟢 IN PROGRESS
 The single most important phase. If this isn't fun, nothing else matters.
-- [ ] Tick scheduler (fixed 600ms timestep) + visible/audible tick pulse
-- [ ] One Wraith vs one telegraphing dummy
-- [ ] Telegraph system (element + wind-up), landing-tick resolution
-- [ ] Wards: flick to negate, energy (Aether) drain/regen, hit vs negate
-- [ ] Resolve meter + a basic Strike back at the enemy
-- [ ] Difficulty ramp (single → mixed elements → faster → fakes)
-- [ ] Tight juice: hit/negate FX, perfect-flick feedback, screenshake/audio
+- [x] Tick scheduler (fixed 600ms timestep) + visible/audible tick pulse (the Knell)
+- [x] One Wraith vs one telegraphing enemy
+- [x] Telegraph system (element + wind-up), landing-tick resolution
+- [x] Wards: flick to negate, energy (Aether) drain/regen, hit vs negate
+- [x] Perfect/Clean/Graze/Miss grading + Momentum
+- [x] Resolve meter + a basic Strike back at the enemy
+- [x] Difficulty ramp (single → mixed elements → faster → feints)
+- [x] Starter-pick screen + win/lose/restart loop
+- [x] Engine-agnostic pure-TS combat core + unit tests (14 passing)
+- [ ] Tighter juice: screenshake, richer perfect-flick FX, better audio bed
+- [ ] Real playtest: *we* find it fun to flick for 5+ minutes; get it in front of a few players
+- [ ] Tune the numbers (windows, Aether, damage) against real hands
 
 **Gate:** *we* find it fun to flick for 5+ minutes. Get it in front of a few real players.
+
+> **Run it:** `npm install && npm run dev`. Code map: `src/core/` (engine-agnostic sim, tested),
+> `src/game/` (Canvas render, input, audio), `src/data/` (Wraiths). See README "Play the prototype".
 
 ## Phase 2 — The Collector Loop
 - [ ] Full 6-element type chart wired into combat

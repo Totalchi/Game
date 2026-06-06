@@ -36,7 +36,27 @@ mechanic people stream.
 
 ## Status
 
-🟡 **Pre-production.** We're at design-doc stage. Nothing has been built yet.
+🟢 **Phase 1 prototype is playable.** The core flick loop runs: the Knell (600ms tick), telegraphed
+attacks, six Wards, Perfect/Clean/Graze/Miss grading, Aether economy, Resolve→Strike offense,
+Momentum, an escalating enemy, and a starter-pick screen. Engine-agnostic pure-TS combat core with a
+Canvas renderer (Phaser wraps it later for production). 14 core unit tests passing.
+
+## Play the prototype
+
+```bash
+npm install
+npm run dev      # open the printed localhost URL in a browser
+```
+
+**How to play:** pick a Wraith (1/2/3) → raise the **matching Ward** (keys **1–6**) on the beat an
+attack reaches the NOW line. A quick **tap** = a cheap **Perfect**; **holding** drains Aether. Bank
+Resolve from good defense, then press **SPACE** to Strike. Drop the enemy's Vigor to bind it. `R`
+restarts.
+
+```bash
+npm test         # run the combat + type-chart unit tests
+npm run build    # production build (tsc + vite)
+```
 
 ## Documentation
 

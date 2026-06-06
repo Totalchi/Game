@@ -1,0 +1,187 @@
+import { Combat } from '../core/combat';
+import { CFG } from '../core/config';
+import { ELEMENTS, type Element } from '../core/types';
+import { ELEMENT_COLOR, ELEMENT_GLYPH, GRADE_COLOR } from './colors';
+import { ENEMY } from '../data/wraiths';
+
+const LANE_LEAD_MS = 3 * CFG.tickMs; // how far ahead the lane shows incoming attacks
+
+export interface RenderInfo {
+  wraithName: string;
+}
+
+export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, info: RenderInfo): void {
+  const W = ctx.canvas.width;
+  const H = ctx.canvas.height;
+
+  // Background (the Long Dusk).
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#14131a');
+  bg.addColorStop(1, '#0c0b10');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  drawEnemy(ctx, c, W);
+  drawLane(ctx, c, now, W, H);
+  drawKnell(ctx, c, W, H);
+  drawBars(ctx, c, W, H);
+  drawWards(ctx, c, W, H);
+  drawPlayer(ctx, c, info, W, H);
+  drawFloats(ctx, c, now, W, H);
+
+  if (c.phase !== 'playing') drawEnd(ctx, c, W, H);
+}
+
+function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, frac: number, color: string, label: string): void {
+  ctx.fillStyle = '#222230';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = color;
+  ctx.fillRect(x, y, w * Math.max(0, Math.min(1, frac)), h);
+  ctx.strokeStyle = '#3a3a4a';
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = '#e8e8f0';
+  ctx.font = '12px ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(label, x, y - 4);
+}
+
+function drawEnemy(ctx: CanvasRenderingContext2D, c: Combat, W: number): void {
+  ctx.fillStyle = ELEMENT_COLOR[ENEMY.element];
+  ctx.font = 'bold 20px ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${ENEMY.name}  ${ELEMENT_GLYPH[ENEMY.element]} ${ENEMY.element}`, 24, 36);
+  bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / CFG.enemyVigor, '#ff5566', 'ENEMY VIGOR');
+}
+
+function drawLane(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: number, H: number): void {
+  const laneY = 120;
+  const laneH = 90;
+  const nowX = W - 120; // the NOW line, where attacks land
+  const left = 40;
+
+  // Lane backdrop + NOW line.
+  ctx.fillStyle = '#101019';
+  ctx.fillRect(left, laneY, W - left - 24, laneH);
+  ctx.strokeStyle = '#ffffff';
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(nowX, laneY - 6);
+  ctx.lineTo(nowX, laneY + laneH + 6);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#8a8a9a';
+  ctx.font = '11px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('NOW', nowX, laneY - 10);
+
+  for (const t of c.telegraphs) {
+    const landing = c.timeOfTick(t.landingTick);
+    const remaining = landing - now;
+    if (remaining > LANE_LEAD_MS || remaining < -200) continue;
+    const frac = remaining / LANE_LEAD_MS; // 1 = far, 0 = landing
+    const x = nowX - (nowX - left) * (1 - frac);
+    const shown: Element = t.feintFrom && !t.flipped ? t.feintFrom : t.element;
+    const col = ELEMENT_COLOR[shown];
+
+    const cy = laneY + laneH / 2;
+    const r = 22;
+    ctx.fillStyle = col;
+    ctx.globalAlpha = t.resolved ? 0.25 : 1;
+    ctx.beginPath();
+    ctx.arc(x, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#0c0b10';
+    ctx.font = 'bold 22px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ELEMENT_GLYPH[shown], x, cy + 1);
+    ctx.textBaseline = 'alphabetic';
+
+    if (t.feintFrom && !t.flipped) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.fillText('?feint', x, cy + r + 12);
+    }
+  }
+  void H;
+}
+
+function drawKnell(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
+  const p = c.tickProgress();
+  const pulse = 1 - p; // bright at the start of each beat
+  const cx = W / 2;
+  const cy = H / 2 + 10;
+  const r = 26 + pulse * 14;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255, 90, 60, ${0.18 + pulse * 0.5})`;
+  ctx.fill();
+  ctx.strokeStyle = '#ff7a4a';
+  ctx.stroke();
+  ctx.fillStyle = '#9a9aa8';
+  ctx.font = '11px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('THE KNELL', cx, cy + r + 18);
+}
+
+function drawBars(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
+  const y = H - 132;
+  bar(ctx, 24, y, (W - 72) / 2, 16, c.aether / CFG.aetherMax, '#48c0ff', `AETHER ${Math.round(c.aether)}`);
+  const rx = 24 + (W - 72) / 2 + 24;
+  const ready = c.resolve >= CFG.strikeCost;
+  bar(ctx, rx, y, (W - 72) / 2, 16, c.resolve / CFG.resolveMax, ready ? '#ff7ad9' : '#9a5bb0', `RESOLVE ${Math.round(c.resolve)}${ready ? '  [SPACE = STRIKE]' : ''}`);
+}
+
+function drawWards(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
+  const y = H - 96;
+  const n = ELEMENTS.length;
+  const gap = 10;
+  const bw = (W - 48 - gap * (n - 1)) / n;
+  ELEMENTS.forEach((el, i) => {
+    const x = 24 + i * (bw + gap);
+    const up = c.activeElement === el;
+    ctx.fillStyle = up ? ELEMENT_COLOR[el] : '#1b1b27';
+    ctx.fillRect(x, y, bw, 54);
+    ctx.strokeStyle = ELEMENT_COLOR[el];
+    ctx.lineWidth = up ? 3 : 1;
+    ctx.strokeRect(x, y, bw, 54);
+    ctx.lineWidth = 1;
+    ctx.fillStyle = up ? '#0c0b10' : ELEMENT_COLOR[el];
+    ctx.font = 'bold 20px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(ELEMENT_GLYPH[el], x + bw / 2, y + 26);
+    ctx.fillStyle = up ? '#0c0b10' : '#9a9aa8';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillText(`${i + 1} ${el}`, x + bw / 2, y + 44);
+  });
+}
+
+function drawPlayer(ctx: CanvasRenderingContext2D, c: Combat, info: RenderInfo, W: number, H: number): void {
+  bar(ctx, 24, H - 28, W - 48, 14, c.playerVigor / CFG.playerVigor, '#5fd35f', `${info.wraithName}  VIGOR ${Math.round(c.playerVigor)}   ·   Perfects ${c.perfects}  ·  Best streak ${c.bestStreak}`);
+}
+
+function drawFloats(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: number, H: number): void {
+  ctx.textAlign = 'center';
+  for (const f of c.floats) {
+    const age = (now - f.bornAt) / 900;
+    ctx.globalAlpha = Math.max(0, 1 - age);
+    ctx.fillStyle = GRADE_COLOR[f.kind] ?? '#fff';
+    ctx.font = `bold ${f.kind === 'perfect' ? 34 : 24}px ui-monospace, monospace`;
+    ctx.fillText(f.text, W / 2, H / 2 - 40 - age * 30);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawEnd(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
+  ctx.fillStyle = 'rgba(8,8,12,0.78)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = c.phase === 'won' ? '#ffd54a' : '#ff6b6b';
+  ctx.font = 'bold 48px ui-monospace, monospace';
+  ctx.fillText(c.phase === 'won' ? 'WRAITH BOUND' : 'YOU FELL', W / 2, H / 2 - 10);
+  ctx.fillStyle = '#cfd2e0';
+  ctx.font = '16px ui-monospace, monospace';
+  ctx.fillText(`Perfects: ${c.perfects}   ·   Best streak: ${c.bestStreak}`, W / 2, H / 2 + 26);
+  ctx.fillText('Press  R  to flick again', W / 2, H / 2 + 54);
+}
