@@ -40,11 +40,23 @@ mechanic people stream.
 
 ## Documentation
 
+**Design & world**
 - **[docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)** — the master design (pillars, the flick, collection, modes, teaching curve).
 - **[docs/WORLD.md](docs/WORLD.md)** — world bible & art direction (the lore that makes the tick *canon*).
+- **[docs/STORY.md](docs/STORY.md)** — story, characters, themes & how we build the game's soul.
 - **[docs/BESTIARY.md](docs/BESTIARY.md)** — the Wraiths: starter trio, notable creatures, the Hollow legendary.
 - **[docs/COMBAT_DEEPDIVE.md](docs/COMBAT_DEEPDIVE.md)** — full flick spec with timing windows & worked tick-timelines.
+
+**Systems & retention**
+- **[docs/RARITY.md](docs/RARITY.md)** — rarity tiers (Revenants, Primarch Echoes, Hollowborn, Aberrants) & the chase.
+- **[docs/PROGRESSION.md](docs/PROGRESSION.md)** — the Sanctuary (base building), leveling & skill trees; the retention loop stack.
+- **[docs/SEASONS.md](docs/SEASONS.md)** — seasons, world events & live-ops calendar.
+
+**Build & business**
+- **[docs/UI_HUD.md](docs/UI_HUD.md)** — HUD/UI design with combat-screen mockups.
+- **[docs/NETCODE.md](docs/NETCODE.md)** — PvP & netcode strategy (why our 600ms tick is a fairness superpower).
 - **[docs/TECH_STACK.md](docs/TECH_STACK.md)** — engine/tech decision, with research.
+- **[docs/ART_BIBLE.md](docs/ART_BIBLE.md)** — visual identity + ready-to-paste image-generation prompts.
 - **[docs/MONETIZATION.md](docs/MONETIZATION.md)** — business model and how we make money (ethically).
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — milestones from prototype to launch.
 

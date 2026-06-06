@@ -7,7 +7,7 @@
 **Tone:** Dark elemental fantasy — moody, mythic, melancholy. The beauty of a dying world, not edgelord grimdark, not kiddie-cute.
 **Tagline:** *Flick the tick. Bind the beast.*
 
-> **Companion docs:** [WORLD.md](WORLD.md) (lore & art direction) · [BESTIARY.md](BESTIARY.md) (the Wraiths) · [COMBAT_DEEPDIVE.md](COMBAT_DEEPDIVE.md) (the flick mechanic in full) · [TECH_STACK.md](TECH_STACK.md) · [MONETIZATION.md](MONETIZATION.md) · [ROADMAP.md](ROADMAP.md)
+> **Companion docs:** [WORLD.md](WORLD.md) (lore & art direction) · [STORY.md](STORY.md) (story & soul) · [BESTIARY.md](BESTIARY.md) (the Wraiths) · [COMBAT_DEEPDIVE.md](COMBAT_DEEPDIVE.md) (the flick mechanic in full) · [RARITY.md](RARITY.md) (the chase) · [PROGRESSION.md](PROGRESSION.md) (Sanctuary, leveling, skill trees) · [SEASONS.md](SEASONS.md) (live-ops) · [UI_HUD.md](UI_HUD.md) · [NETCODE.md](NETCODE.md) · [TECH_STACK.md](TECH_STACK.md) · [ART_BIBLE.md](ART_BIBLE.md) · [MONETIZATION.md](MONETIZATION.md) · [ROADMAP.md](ROADMAP.md)
 
 ---
 
