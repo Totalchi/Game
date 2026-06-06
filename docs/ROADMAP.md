@@ -31,10 +31,14 @@ The single most important phase. If this isn't fun, nothing else matters.
 > **Run it:** `npm install && npm run dev`. Code map: `src/core/` (engine-agnostic sim, tested),
 > `src/game/` (Canvas render, input, audio), `src/data/` (Wraiths). See README "Play the prototype".
 
-## Phase 2 — The Collector Loop
-- [ ] Full 6-element type chart wired into combat
-- [ ] 8–12 Wraiths with distinct stats/Strikes/signatures (placeholder art)
-- [ ] Binding (catch) minigame
+## Phase 2 — The Collector Loop  🟢 STARTED
+- [x] 2D top-down tile-based **overworld** (explore with arrows/WASD) — programmer-art placeholder
+- [x] **Wild encounters**: tall grass → transition into the flick-battle → return to the world
+- [x] Dynamic wild Wraith (element-themed) per encounter
+- [x] Full 6-element type chart wired into combat (from Phase 1)
+- [ ] Swap programmer-art for real pixel-art tiles/sprites (needs assets — see ART_BIBLE.md §0)
+- [ ] 8–12 Wraiths with distinct stats/Strikes/signatures
+- [ ] Binding (catch) minigame (the Binding Rite) instead of auto-bind on win
 - [ ] Team of 6, mid-battle swap, leveling, Ascension (evolution)
 - [ ] Short Story/Hunt with escalating telegraphs + a boss
 

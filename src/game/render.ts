@@ -2,12 +2,13 @@ import { Combat } from '../core/combat';
 import { CFG } from '../core/config';
 import { ELEMENTS, type Element } from '../core/types';
 import { ELEMENT_COLOR, ELEMENT_GLYPH, GRADE_COLOR } from './colors';
-import { ENEMY } from '../data/wraiths';
 
 const LANE_LEAD_MS = 3 * CFG.tickMs; // how far ahead the lane shows incoming attacks
 
 export interface RenderInfo {
   wraithName: string;
+  enemyName: string;
+  enemyElement: Element;
 }
 
 export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, info: RenderInfo): void {
@@ -21,7 +22,7 @@ export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, in
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
 
-  drawEnemy(ctx, c, W);
+  drawEnemy(ctx, c, info, W);
   drawLane(ctx, c, now, W, H);
   drawKnell(ctx, c, W, H);
   drawBars(ctx, c, W, H);
@@ -45,12 +46,12 @@ function bar(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: 
   ctx.fillText(label, x, y - 4);
 }
 
-function drawEnemy(ctx: CanvasRenderingContext2D, c: Combat, W: number): void {
-  ctx.fillStyle = ELEMENT_COLOR[ENEMY.element];
+function drawEnemy(ctx: CanvasRenderingContext2D, c: Combat, info: RenderInfo, W: number): void {
+  ctx.fillStyle = ELEMENT_COLOR[info.enemyElement];
   ctx.font = 'bold 20px ui-monospace, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(`${ENEMY.name}  ${ELEMENT_GLYPH[ENEMY.element]} ${ENEMY.element}`, 24, 36);
-  bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / CFG.enemyVigor, '#ff5566', 'ENEMY VIGOR');
+  ctx.fillText(`${info.enemyName}  ${ELEMENT_GLYPH[info.enemyElement]} ${info.enemyElement}`, 24, 36);
+  bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / CFG.enemyVigor, '#ff5566', 'WILD WRAITH VIGOR');
 }
 
 function drawLane(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: number, H: number): void {
@@ -183,5 +184,4 @@ function drawEnd(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number)
   ctx.fillStyle = '#cfd2e0';
   ctx.font = '16px ui-monospace, monospace';
   ctx.fillText(`Perfects: ${c.perfects}   ·   Best streak: ${c.bestStreak}`, W / 2, H / 2 + 26);
-  ctx.fillText('Press  R  to flick again', W / 2, H / 2 + 54);
 }
