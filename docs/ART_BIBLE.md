@@ -4,6 +4,36 @@
 > render the full concept set in one pass the moment we have image-gen credits (free plan currently
 > blocks generation — see note at bottom). Style derived from WORLD.md §5.
 
+## 0. Visual format: classic 2D top-down pixel-art (LOCKED) 🎮
+
+**WARDBOUND is a 2D top-down pixel-art game** in the lineage of the classic handheld monster-RPGs
+(GBA-era Pokémon, and modern originals like Coromon / Nexomon / Monster Sanctuary) — *but* dressed in
+our dark-elemental world of the Long Dusk. This is the locked art direction (player reference, June 2026).
+
+- **Overworld (exploration layer):** top-down, **tile-based** pixel maps you walk around in 4
+  directions — the six domains are explorable regions/routes, your **Sanctuary** is a town you visibly
+  rebuild, NPCs and **wild Wraiths** roam. This is the Pokémon-style collect/explore wrapper.
+- **Battle layer:** entering a fight transitions to the **flick-battle** screen (our unique mechanic),
+  also rendered in pixel art with the HUD from UI_HUD.md overlaid (telegraph lane, Knell, Wards).
+- **Why it fits us perfectly:** pixel art is cheap to produce, infinitely scalable in scope, nostalgic
+  and beloved, *highly* streamable, and the dusk palette makes element colours pop as pure signal.
+
+### Pixel-art technical spec
+- **Internal resolution:** render at a small virtual canvas (target **~480×270**, i.e. 16:9 "GBA-plus"),
+  then integer-scale up with **nearest-neighbour** (no blur) to the window. Mobile-friendly.
+- **Tile size:** **16×16 px** tiles (overworld), with a 32×32 option for hero props/buildings.
+- **Character sprites:** ~**16×24 px**, 4-directional walk cycles (3–4 frames each).
+- **Wraith battle sprites:** ~**48×48 to 64×64 px**, with idle + a Strike/flinch frame; Ascended forms
+  are larger/more detailed variants.
+- **Palette discipline:** a tight, cohesive dusk palette (amber-grays) + the seven element accent hues.
+  Limited colours per sprite (retro feel + readability). Keep the §1 element hue/shape language.
+- **Animation:** simple, readable, looped; the Knell heartbeat can subtly pulse battle elements on-beat.
+
+### IP-safety reminder
+We adopt the **2D top-down pixel-RPG style and genre conventions** (legally fine — many originals do),
+and build **100% original** tiles, sprites, palettes, creatures, names, and code. No Nintendo/GameFreak
+assets, sprites, tilesets, fonts, sounds, or UI — ever.
+
 ## 1. Visual identity (the rules)
 
 - **Mood:** dark elemental fantasy — *mythic, melancholy, beautiful-but-dying.* The Long Dusk. Not
@@ -20,10 +50,12 @@
   - **Hollow** — absence/black with a thin rim-light, void shapes
 - **Wraiths:** "a beautiful ghost made of a dying element." **Silhouette-first** (must read at small
   size and in spectator HUD). Eldritch edge, never cartoon-cute.
-- **Rendering target:** painterly concept-art for ideation → clean, readable game-ready sprites/2D for
-  production. Strong rim-light from the element's glow against the dim world.
+- **Rendering target (two tracks):**
+  1. **Painterly concept art** — for ideation / key art / marketing (the §2A suffix below).
+  2. **Pixel-art production assets** — the *actual in-game* look: sprites, tilesets, battle Wraiths
+     (the §2B suffix below). This is what ships.
 
-## 2. Reusable style suffix (append to EVERY prompt)
+## 2A. Painterly concept-art suffix (ideation / key art / marketing)
 
 ```
 STYLE: dark elemental fantasy game concept art, mythic and melancholy mood, painterly,
@@ -32,9 +64,22 @@ pops, dramatic rim-lighting from the creature's own elemental glow, centered cha
 high detail, no text, no watermark, no UI.
 ```
 
+## 2B. Pixel-art production suffix (the in-game look — use for sprites/tiles)
+
+```
+STYLE: 2D top-down monster-RPG pixel art, GBA/16-bit era inspired (think Coromon / Nexomon, NOT any
+Nintendo asset), clean readable sprite, limited cohesive palette, dark dusk amber-gray tones with one
+glowing element-colour accent, crisp pixels, nearest-neighbour, transparent background, single sprite,
+no text, no watermark, no UI, no anti-aliasing.
+```
+For **overworld tilesets** add: `top-down 16x16 tileset, seamless tiles, orthogonal, game-ready`.
+For **battle sprites** add: `front-facing battle sprite, ~64x64, idle pose, slight elemental glow`.
+
 ## 3. Creature prompts (the launch anchors)
 
 > Each line has 3 Ascension stages. Generate stage art consistently (same creature, evolving).
+> **`[+STYLE]` = append §2B (pixel-art) for in-game sprites, or §2A (painterly) for concept/marketing.**
+> Production sprites use **§2B**.
 
 ### Ember starter — Ashling → Cindreaver → Pyrelich
 - **Ashling (stage 1):** `A small cursed ember-fox spirit kit, body of dim glowing coals and soft ash, tiny flickering flame-tail, hollow warm-orange eyes, fragile and sad. [+STYLE]`
@@ -73,6 +118,23 @@ high detail, no text, no watermark, no UI.
 - **The Rime (Frost):** `A frozen waste of black ice and white-blue gloom, things frozen mid-scream, silent and deathly. [+STYLE, environment]`
 - **The Hollow (Void) ★:** `A non-Euclidean wound at the center of the world, dim and wrong, geometry that shouldn't exist, the source of the Sundering, dread and awe. [+STYLE, environment]`
 
+> For in-game environments use **§2B** + the tileset add-on, e.g. a Cinderwaste tileset:
+> `top-down 16x16 pixel tileset for an ash-desert region: cracked glass-fused ground, ember rocks,
+> burned ruins, dim path tiles, seamless, orthogonal, dark dusk palette with ember-orange accents. [§2B]`
+
+## 4B. Overworld assets (the top-down exploration layer)
+
+- **Player overworld sprite:** `top-down 16x24 pixel character: a hooded young Warden in a tattered
+  dusk-grey cloak with a faint glowing element-sigil, 4-direction walk cycle (down/up/left/right), 3
+  frames each, retro monster-RPG style. [§2B]`
+- **Sanctuary town (rebuildable):** `top-down pixel-art ruined-then-restored Warden refuge town:
+  broken stone hall, a relit hearth, small huts, lantern light returning, regrowing dusk garden;
+  provide a 'ruined' and a 'restored' tile variant set. [§2B]`
+- **Wild Wraith overworld blips:** `tiny top-down 16x16 pixel overworld versions of each Wraith,
+  faintly glowing in their element colour, readable silhouette. [§2B]`
+- **Domain route tiles:** one seamless 16×16 tileset per domain (Cinderwaste / Drowned Reach / Howling
+  Span / Cairnlands / Rotwood / Rime / Hollow) using §2B + the tileset add-on above.
+
 ## 5. Key-art / branding prompts
 
 - **The Warden (player):** `A hooded Warden figure in a tattered cloak holding up a glowing six-spoked Ward-sigil that casts elemental light, standing against the Long Dusk, lonely and resolute, mythic. [+STYLE]`
@@ -83,13 +145,18 @@ high detail, no text, no watermark, no UI.
 
 ## 6. Recommended generation setup (when credits exist)
 
+- **Pixel-art sprites/tiles (the shipping assets):** any strong model with the **§2B** suffix, generated
+  large then **downscaled + cleaned** to true pixel resolution (16×16 tiles, 48–64px battle sprites).
+  Expect hand-cleanup; AI rarely outputs perfect pixel grids — treat generations as a base to pixel over.
 - **Top quality / key art / 4K / any text:** `nano_banana_pro` (~2 credits/img, supports 4K + diagrams).
-- **Character studies / portraits:** `soul_2` (with a reference image for consistency across a line) or
-  `soul_cast` (text-only, cheaper) — *requires Basic plan or higher.*
-- **For evolution-line consistency:** generate stage 2 first, then feed it as a **reference image**
-  (`medias` role) when generating stages 1 and 3, so the creature stays recognizably the same being.
-- **Aspect ratios:** `1:1` or `3:4` for creature studies; `16:9` for environments; `2:3`/`9:16` for
+- **Concept-art creature studies (§2A):** `soul_2` (with a reference image for line consistency) or
+  `soul_cast` (cheaper) — *requires Basic plan or higher.*
+- **For evolution-line consistency:** generate the stage-2 form first, then feed it as a **reference
+  image** (`medias` role) for stages 1 and 3 so the creature stays the same being.
+- **Aspect ratios:** `1:1` for sprites/creatures; `16:9` for environments/overworld; `2:3`/`9:16` for
   key art / mobile splash.
+- **Alternative pixel pipelines:** dedicated pixel-art tools/models or hand-pixeling in Aseprite —
+  for a pixel game, a skilled pixel artist (or Aseprite + these prompts as reference) will beat raw AI.
 
 ## 7. ⚠️ Current blocker
 

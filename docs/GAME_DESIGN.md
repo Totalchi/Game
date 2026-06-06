@@ -143,6 +143,21 @@ A great Warden can bind a rare Wraith on low odds by simply out-flicking it. (St
 
 ---
 
+## 5B. Format: a 2D top-down pixel-art world (LOCKED)
+
+WARDBOUND plays as a **classic 2D top-down pixel-art monster-RPG** (GBA-era lineage; modern kin:
+Coromon / Nexomon / Monster Sanctuary) — wrapped in our dark dusk world. Two layers:
+
+- **Overworld (explore & collect):** walk a **tile-based, top-down** Vael in pixel art — the six
+  **domains** are explorable regions, NPCs and **wild Wraiths** roam, and your **Sanctuary** is a town
+  you visibly rebuild (see PROGRESSION.md). This is the Pokémon-style wrapper that frames everything.
+- **Battle (the flick):** an encounter transitions to the **flick-battle** screen — our unique mechanic
+  (telegraphs, Wards, the Knell) rendered in pixel art with the HUD from UI_HUD.md.
+
+The two layers reinforce each other: exploration earns collection + Sanctuary progress; battles are the
+high-skill core. Full pixel-art spec, palette, and asset prompts live in [ART_BIBLE.md](ART_BIBLE.md) §0.
+(IP-safe: we take the *style/genre*, never any Nintendo asset; everything original.)
+
 ## 6. Status: Curses (depth without clutter)
 
 Curses are the spice — and thematically perfect, because they attack your **ability to flick** rather

@@ -82,6 +82,16 @@ de-risks the fun before we invest in netcode.
   /docs           # this documentation
 ```
 
+## Pixel-art rendering notes (art direction is LOCKED to 2D top-down pixel art)
+
+- Render the game at a **small internal resolution (~480×270)** and **integer-scale with
+  nearest-neighbour** to the window (`imageSmoothingEnabled = false` on Canvas; `pixelArt: true` in
+  Phaser) so pixels stay crisp at any size. Mobile-friendly via responsive integer scaling.
+- **Tilemaps** for the overworld (16×16 tiles); Phaser has first-class tilemap + Tiled (.tmx/.json)
+  support, or a small custom tile renderer over the engine-agnostic core.
+- Keep the **flick combat core engine-agnostic** (already true); the pixel skin is a render concern.
+- Asset pipeline: sprite sheets + an atlas; author tiles/sprites in **Aseprite/Tiled**. See ART_BIBLE.md §0.
+
 ## First build target
 
 A **playable single-battle prototype**: one Wraith vs one telegraphing enemy, the full flick loop

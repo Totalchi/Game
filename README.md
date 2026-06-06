@@ -2,9 +2,10 @@
 
 > **Flick the tick. Bind the beast.**
 
-A real-time creature-collector battler that fuses **OSRS-style prayer-flick timing** with
-**Pokémon-style collection and team-building** — wrapped in an original *dark-elemental*
-world of cursed spirits called **Wraiths**.
+A **2D top-down pixel-art** creature-collector battler (classic GBA-era monster-RPG style) that fuses
+**OSRS-style prayer-flick timing** with **Pokémon-style collection and team-building** — wrapped in an
+original *dark-elemental* world of cursed spirits called **Wraiths**. Explore a tile-based dusk world
+top-down; battles switch to the unique real-time flick combat.
 
 You don't pick moves from a passive menu. You fight on a **tick clock** — and here's the keystone
 idea that ties the whole game together: **the tick is the dying heartbeat of a broken world, and
