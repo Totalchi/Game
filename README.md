@@ -50,12 +50,15 @@ npm run dev      # open the printed localhost URL in a browser
 ```
 
 **How to play:**
-1. Pick a Wraith (1/2/3).
+1. Pick your first Wraith (1/2/3).
 2. **Explore** the top-down dusk world with **arrows / WASD**. Walk into the **tall grass** to find a
-   wild Wraith.
+   wild Wraith. Press **Tab** to switch which bound Wraith you lead with.
 3. In **battle**, raise the **matching Ward** (keys **1–6**) on the beat an attack reaches the NOW
    line. A quick **tap** = a cheap **Perfect**; **holding** drains Aether. Bank Resolve, then press
-   **SPACE** to Strike. Drop the wild Wraith's Vigor to bind it. **ENTER** returns you to the world.
+   **SPACE** to Strike. Weaken the wild Wraith's Vigor to 0.
+4. The **Binding Rite** begins: Ward its final flurry of strikes to fill the **Bind meter** past the
+   threshold and **catch it**. Bound Wraiths join your collection — which is **saved** between
+   sessions. **ENTER** returns you to the world.
 
 > The overworld is intentionally chunky "programmer-art" — it proves the *format* (explore → encounter
 > → flick-battle → return). Real pixel-art tiles/sprites swap in later (see `docs/ART_BIBLE.md` §0).

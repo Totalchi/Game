@@ -1,11 +1,14 @@
 import '../style.css';
 import { Combat } from '../core/combat';
+import { BindingRite } from '../core/binding';
 import { ELEMENTS, type Element } from '../core/types';
-import { render } from './render';
+import { render, renderRite } from './render';
 import { Audio } from './audio';
-import { STARTERS, type WraithDef } from '../data/wraiths';
+import { STARTERS } from '../data/wraiths';
 import { ELEMENT_COLOR } from './colors';
 import { Overworld } from './overworld';
+import { Roster } from '../core/roster';
+import { loadRoster, saveRoster } from './save';
 
 const KEY_TO_INDEX: Record<string, number> = { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5 };
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd']);
@@ -16,20 +19,27 @@ canvas.width = 900;
 canvas.height = 620;
 app.appendChild(canvas);
 const ctx = canvas.getContext('2d')!;
-ctx.imageSmoothingEnabled = false; // crisp pixels
+ctx.imageSmoothingEnabled = false;
 
 const audio = new Audio();
 
-type Scene = 'title' | 'overworld' | 'battle';
+type Scene = 'title' | 'overworld' | 'battle' | 'rite';
 let scene: Scene = 'title';
-let chosen: WraithDef | null = null;
 let overworld: Overworld | null = null;
 let combat: Combat | null = null;
+let rite: BindingRite | null = null;
+let riteResolved = false;
 let wild: { name: string; element: Element } = { name: 'Ashling', element: 'ember' };
 let lastTick = -1;
 
-const rawKeys = new Set<string>(); // overworld movement
-const heldWards = new Set<Element>(); // battle Wards
+const rawKeys = new Set<string>();
+const heldWards = new Set<Element>();
+
+let roster = loadRoster();
+if (!roster.isEmpty()) {
+  overworld = new Overworld();
+  scene = 'overworld';
+}
 
 const WILD_NAMES: Record<Element, string> = {
   ember: 'Ashling',
@@ -43,14 +53,23 @@ const WILD_NAMES: Record<Element, string> = {
 
 function startBattle(now: number, element: Element): void {
   wild = { name: WILD_NAMES[element], element };
-  combat = new Combat(now, { playerElement: chosen!.element, seed: Math.floor(now) % 9999, autoDirector: true });
+  combat = new Combat(now, { playerElement: roster.active().element, seed: Math.floor(now) % 9999, autoDirector: true });
   heldWards.clear();
   lastTick = -1;
   scene = 'battle';
 }
 
+function startRite(now: number): void {
+  rite = new BindingRite(now, { element: wild.element, seed: Math.floor(now) % 9999, count: 5 });
+  riteResolved = false;
+  heldWards.clear();
+  lastTick = -1;
+  scene = 'rite';
+}
+
 function returnToOverworld(): void {
   combat = null;
+  rite = null;
   scene = 'overworld';
   rawKeys.clear();
 }
@@ -59,7 +78,9 @@ function returnToOverworld(): void {
 window.addEventListener('keydown', (e) => {
   if (scene === 'title') {
     if (e.key === '1' || e.key === '2' || e.key === '3') {
-      chosen = STARTERS[Number(e.key) - 1];
+      const s = STARTERS[Number(e.key) - 1];
+      roster.add(s.name, s.element);
+      saveRoster(roster);
       overworld = new Overworld();
       scene = 'overworld';
     }
@@ -68,41 +89,65 @@ window.addEventListener('keydown', (e) => {
 
   if (scene === 'overworld') {
     if (MOVE_KEYS.has(e.key)) rawKeys.add(e.key);
+    else if (e.key === 'Tab') {
+      e.preventDefault();
+      roster.cycle();
+      saveRoster(roster);
+    }
     return;
   }
 
-  // battle
-  if (!combat) return;
-  if (combat.phase !== 'playing') {
-    if (e.key === 'Enter' || e.key === 'r' || e.key === 'R') returnToOverworld();
+  if (scene === 'battle') {
+    if (!combat) return;
+    if (combat.phase !== 'playing') {
+      if (e.key === 'Enter') returnToOverworld();
+      return;
+    }
+    if (e.key === ' ') {
+      e.preventDefault();
+      combat.strike(performance.now());
+      return;
+    }
+    raiseWardKey(e);
     return;
   }
-  if (e.key === ' ') {
-    e.preventDefault();
-    combat.strike(performance.now());
-    return;
-  }
-  const idx = KEY_TO_INDEX[e.key];
-  if (idx !== undefined && !e.repeat) {
-    const el = ELEMENTS[idx];
-    heldWards.add(el);
-    combat.raiseWard(el, performance.now());
-    audio.flick();
+
+  if (scene === 'rite') {
+    if (!rite) return;
+    if (rite.finished) {
+      if (e.key === 'Enter') returnToOverworld();
+      return;
+    }
+    raiseWardKey(e);
   }
 });
 
 window.addEventListener('keyup', (e) => {
   rawKeys.delete(e.key);
-  if (scene !== 'battle' || !combat) return;
   const idx = KEY_TO_INDEX[e.key];
-  if (idx !== undefined) {
-    const el = ELEMENTS[idx];
-    heldWards.delete(el);
-    combat.releaseWard(el, performance.now());
-    const fallback = [...heldWards].pop();
-    if (fallback) combat.raiseWard(fallback, performance.now());
+  if (idx === undefined) return;
+  const el = ELEMENTS[idx];
+  heldWards.delete(el);
+  const now = performance.now();
+  if (scene === 'battle' && combat) combat.releaseWard(el, now);
+  else if (scene === 'rite' && rite) rite.releaseWard(el, now);
+  const fallback = [...heldWards].pop();
+  if (fallback) {
+    if (scene === 'battle' && combat) combat.raiseWard(fallback, now);
+    else if (scene === 'rite' && rite) rite.raiseWard(fallback, now);
   }
 });
+
+function raiseWardKey(e: KeyboardEvent): void {
+  const idx = KEY_TO_INDEX[e.key];
+  if (idx === undefined || e.repeat) return;
+  const el = ELEMENTS[idx];
+  heldWards.add(el);
+  const now = performance.now();
+  if (scene === 'battle' && combat) combat.raiseWard(el, now);
+  else if (scene === 'rite' && rite) rite.raiseWard(el, now);
+  audio.flick();
+}
 
 // ---------- title ----------
 function drawTitle(): void {
@@ -119,10 +164,10 @@ function drawTitle(): void {
   ctx.fillText('Flick the tick. Bind the beast.', W / 2, 126);
   ctx.fillStyle = '#cfd2e0';
   ctx.font = '14px ui-monospace, monospace';
-  ctx.fillText('Explore the dusk (arrows/WASD). Tall grass hides wild Wraiths.', W / 2, 166);
-  ctx.fillText('In battle: raise the matching Ward (1–6) on the beat. SPACE = Strike.', W / 2, 188);
+  ctx.fillText('Explore (arrows/WASD). Tall grass hides wild Wraiths. Tab switches Wraith.', W / 2, 166);
+  ctx.fillText('Battle: raise the matching Ward (1–6) on the beat · SPACE = Strike · then bind it.', W / 2, 188);
   ctx.fillStyle = '#ffd54a';
-  ctx.fillText('Choose your Wraith — press 1, 2 or 3', W / 2, 234);
+  ctx.fillText('Choose your first Wraith — press 1, 2 or 3', W / 2, 234);
 
   STARTERS.forEach((s, i) => {
     const x = W / 2 - 300 + i * 200;
@@ -160,20 +205,30 @@ function wrapText(c: CanvasRenderingContext2D, text: string, cx: number, y: numb
   c.fillText(line, cx, yy);
 }
 
-function drawOverworldHud(): void {
+function drawOverworldHud(r: Roster): void {
   const W = canvas.width;
-  ctx.fillStyle = 'rgba(8,8,12,0.7)';
+  ctx.fillStyle = 'rgba(8,8,12,0.72)';
   ctx.fillRect(0, 0, W, 30);
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffd54a';
   ctx.font = 'bold 14px ui-monospace, monospace';
   ctx.fillText('The Cinderwaste', 12, 20);
-  ctx.fillStyle = '#cfd2e0';
+
+  // Party with the active Wraith highlighted.
   ctx.font = '12px ui-monospace, monospace';
-  ctx.fillText(`Wraith: ${chosen!.name}`, 200, 20);
+  let x = 190;
+  const active = r.active();
+  for (const e of r.entries()) {
+    const isActive = e.name === active.name;
+    ctx.fillStyle = isActive ? ELEMENT_COLOR[e.element] : '#6a6a78';
+    const label = isActive ? `▸${e.name}` : e.name;
+    ctx.fillText(label, x, 20);
+    x += ctx.measureText(label).width + 16;
+  }
+
   ctx.textAlign = 'right';
   ctx.fillStyle = '#7a7a8a';
-  ctx.fillText('Arrows/WASD · find a wild Wraith in the tall grass', W - 12, 20);
+  ctx.fillText(`Bound: ${r.totalBound()} (${r.speciesCount()} species) · Tab: switch`, W - 12, 20);
 }
 
 // ---------- main loop ----------
@@ -185,7 +240,7 @@ function loop(): void {
   } else if (scene === 'overworld' && overworld) {
     overworld.update(now, rawKeys);
     overworld.render(ctx, now);
-    drawOverworldHud();
+    drawOverworldHud(roster);
     if (overworld.pendingEncounter) {
       const el = overworld.pendingEncounter;
       overworld.pendingEncounter = null;
@@ -195,21 +250,43 @@ function loop(): void {
     const before = combat.perfects;
     combat.update(now);
     if (combat.perfects > before) audio.perfect();
-    const t = combat.tickIndexAt(now);
-    if (t !== lastTick && combat.phase === 'playing') {
-      lastTick = t;
-      audio.knell();
+    tickAudio(combat.tickIndexAt(now), combat.phase === 'playing');
+    render(ctx, combat, now, { wraithName: roster.active().name, enemyName: wild.name, enemyElement: wild.element });
+    if (combat.phase === 'won') {
+      startRite(now); // weakened — now the Binding Rite begins
+    } else if (combat.phase === 'lost') {
+      promptReturn();
     }
-    render(ctx, combat, now, { wraithName: chosen!.name, enemyName: wild.name, enemyElement: wild.element });
-    if (combat.phase !== 'playing') {
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#cfd2e0';
-      ctx.font = '14px ui-monospace, monospace';
-      ctx.fillText('Press  ENTER  to return to the dusk', canvas.width / 2, canvas.height / 2 + 84);
+  } else if (scene === 'rite' && rite) {
+    const before = rite.combat.perfects;
+    rite.update(now);
+    if (rite.combat.perfects > before) audio.perfect();
+    tickAudio(rite.combat.tickIndexAt(now), !rite.finished);
+    renderRite(ctx, rite, now, { wildName: wild.name, wildElement: wild.element });
+    if (rite.finished && !riteResolved) {
+      riteResolved = true;
+      if (rite.bound) {
+        roster.add(wild.name, wild.element);
+        saveRoster(roster);
+      }
     }
   }
 
   requestAnimationFrame(loop);
+}
+
+function tickAudio(t: number, playing: boolean): void {
+  if (t !== lastTick && playing) {
+    lastTick = t;
+    audio.knell();
+  }
+}
+
+function promptReturn(): void {
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#cfd2e0';
+  ctx.font = '14px ui-monospace, monospace';
+  ctx.fillText('Press  ENTER  to return to the dusk', canvas.width / 2, canvas.height / 2 + 84);
 }
 
 requestAnimationFrame(loop);

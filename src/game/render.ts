@@ -1,4 +1,5 @@
 import { Combat } from '../core/combat';
+import type { BindingRite } from '../core/binding';
 import { CFG } from '../core/config';
 import { ELEMENTS, type Element } from '../core/types';
 import { ELEMENT_COLOR, ELEMENT_GLYPH, GRADE_COLOR } from './colors';
@@ -9,6 +10,11 @@ export interface RenderInfo {
   wraithName: string;
   enemyName: string;
   enemyElement: Element;
+}
+
+export interface RiteInfo {
+  wildName: string;
+  wildElement: Element;
 }
 
 export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, info: RenderInfo): void {
@@ -184,4 +190,55 @@ function drawEnd(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number)
   ctx.fillStyle = '#cfd2e0';
   ctx.font = '16px ui-monospace, monospace';
   ctx.fillText(`Perfects: ${c.perfects}   ·   Best streak: ${c.bestStreak}`, W / 2, H / 2 + 26);
+}
+
+export function renderRite(ctx: CanvasRenderingContext2D, rite: BindingRite, now: number, info: RiteInfo): void {
+  const W = ctx.canvas.width;
+  const H = ctx.canvas.height;
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#161320');
+  bg.addColorStop(1, '#0c0b10');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Title
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd54a';
+  ctx.font = 'bold 22px ui-monospace, monospace';
+  ctx.fillText('BINDING RITE', W / 2, 32);
+  ctx.fillStyle = ELEMENT_COLOR[info.wildElement];
+  ctx.font = '14px ui-monospace, monospace';
+  ctx.fillText(`Ward the ${info.wildName}'s strikes to bind it  —  strike ${rite.progressCount()} / ${rite.total}`, W / 2, 54);
+
+  drawLane(ctx, rite.combat, now, W, H);
+  drawKnell(ctx, rite.combat, W, H);
+
+  // Bind meter (the star of this screen)
+  const mx = 150;
+  const mw = W - 300;
+  const my = H - 178;
+  bar(ctx, mx, my, mw, 24, rite.bindMeter / 100, '#ffd54a', `BIND  ${Math.round(rite.bindMeter)} / 100`);
+  const thx = mx + mw * (rite.threshold / 100);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(thx - 1, my - 6, 2, 36);
+  ctx.fillStyle = '#9a9aa8';
+  ctx.font = '10px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`bind at ${rite.threshold}`, thx, my - 10);
+
+  bar(ctx, 24, H - 132, W - 48, 16, rite.combat.aether / CFG.aetherMax, '#48c0ff', `AETHER ${Math.round(rite.combat.aether)}`);
+  drawWards(ctx, rite.combat, W, H);
+  drawFloats(ctx, rite.combat, now, W, H);
+
+  if (rite.finished) {
+    ctx.fillStyle = 'rgba(8,8,12,0.8)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = rite.bound ? '#ffd54a' : '#ff6b6b';
+    ctx.font = 'bold 46px ui-monospace, monospace';
+    ctx.fillText(rite.bound ? 'WRAITH BOUND!' : 'IT SLIPPED AWAY', W / 2, H / 2 - 6);
+    ctx.fillStyle = '#cfd2e0';
+    ctx.font = '15px ui-monospace, monospace';
+    ctx.fillText('Press  ENTER  to return to the dusk', W / 2, H / 2 + 30);
+  }
 }
