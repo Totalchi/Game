@@ -1,88 +1,109 @@
 # WARDBOUND — Game Design Document
 
-**Working title:** WARDBOUND (placeholder — easy to change)
-**Genre:** Real-time creature-collector battler with skill-timing combat
+**Title:** WARDBOUND
+**Genre:** Real-time creature-collector battler with skill-timing ("flick") combat
 **Platform:** Web (browser), mobile-web friendly. Steam/native later.
-**Audience:** OSRS/skill-game players, creature-collector fans, rhythm/fighting-game crowd, streamers.
-**Tone:** Dark fantasy meets elemental mysticism. Moody, atmospheric, a little melancholy — not grimdark-edgy, not kiddie-cute.
+**Audience:** OSRS/skill-game players, creature-collector fans, rhythm & fighting-game crowd, streamers.
+**Tone:** Dark elemental fantasy — moody, mythic, melancholy. The beauty of a dying world, not edgelord grimdark, not kiddie-cute.
+**Tagline:** *Flick the tick. Bind the beast.*
+
+> **Companion docs:** [WORLD.md](WORLD.md) (lore & art direction) · [BESTIARY.md](BESTIARY.md) (the Wraiths) · [COMBAT_DEEPDIVE.md](COMBAT_DEEPDIVE.md) (the flick mechanic in full) · [TECH_STACK.md](TECH_STACK.md) · [MONETIZATION.md](MONETIZATION.md) · [ROADMAP.md](ROADMAP.md)
 
 ---
 
-## 1. The fantasy
+## 1. Design pillars
 
-The world's elements have curdled. Where there was fire, water, storm, stone, and light, there
-are now **Wraiths** — the bound spirits of dead elements, hungry and half-mad. A **Warden**
-(the player) can bind these Wraiths and channel their power, but only by mastering the ancient
-art of **Warding**: raising the right elemental shield at the exact instant a blow lands.
+Everything in WARDBOUND is measured against these six. If a feature fights a pillar, the feature loses.
 
-You are a Warden. You hunt, bind, and raise Wraiths. You out-time everything that tries to
-kill you.
-
----
-
-## 2. The core mechanic: Warding (the "flick")
-
-This is the heart of the game and our competitive moat. It is a direct, original reinterpretation
-of OSRS prayer-flicking: **tick-perfect toggling of a protective effect under a tight resource
-constraint.**
-
-### 2.1 The tick clock
-
-- Combat runs on a fixed **tick** of **600ms** (configurable; OSRS uses 600ms and it feels great).
-- Everything — attacks, Wards, energy drain, counters — resolves on tick boundaries.
-- A visible **tick pulse** (a beat/heartbeat UI element + audio click) keeps the player in rhythm.
-  Readability is everything: the player must always *feel* the beat.
-
-### 2.2 Wards
-
-- Each element has a **Ward** (Protect-from-Fire, Protect-from-Tide, Protect-from-Storm, …).
-- The player has **Ward slots** mapped to keys (desktop: 1–6 / Q-W-E; mobile: on-screen buttons).
-- A Ward is **toggled**, not held-charged: tap to raise it for the current tick, it auto-drops
-  unless re-tapped. This is the "flick."
-
-### 2.3 The flick loop (why it's deep)
-
-- **Holding a Ward up drains energy fast.** Leaving it down costs nothing.
-- An incoming attack lands on a specific **landing tick** and has an **element**.
-- If the **correct** Ward is up on the landing tick → attack is **negated** (or massively reduced)
-  AND you bank **Resolve** (counter-meter).
-- If the **wrong** Ward is up, or **no** Ward → you take full damage.
-- So the optimal play is to **flick the correct Ward on the exact landing tick and drop it
-  immediately** — spending ~1 tick of energy instead of holding it for many. Just like prayer
-  flicking, but the *element* you flick is dictated by the type matchup.
-
-This produces the signature skill expression: a skilled Warden barely spends energy and blocks
-everything; a novice either gets hit or burns out their energy holding shields up.
-
-### 2.4 Difficulty layers (the skill ceiling)
-
-1. **Single telegraph** (tutorial): one attack, clear 3-tick wind-up, flick on cue.
-2. **Mixed elements**: attacks alternate elements; you must flick the *right* Ward each time.
-3. **Faster cadence**: attacks every 2 ticks, then every tick (the OSRS "1-tick" feel).
-4. **Fakes & feints**: enemy telegraphs one element, switches at the last tick (reaction reads).
-5. **Double-hits / stacked**: two elements on the same landing tick → forces Ward priority choices
-   (you can't block both; minimize damage by Warding the bigger threat).
-
-### 2.5 Energy ("Aether")
-
-- A pool that drains while any Ward is up, regenerates while all Wards are down.
-- Forces the flick discipline: you cannot just hold shields forever.
-- Certain Wraith abilities, items, and cosmetics tune regen/drain — a build-craft dimension.
-
-### 2.6 Offense: Resolve & strikes
-
-- Combat isn't *only* defensive. Perfect flicks build **Resolve**.
-- Spend Resolve to trigger your Wraith's **Strikes** (attacks), which the *opponent* must Ward.
-- In PvP, this becomes a duel of mutual flicking: bait the opponent into the wrong Ward, then
-  strike the element they're not covering. Pure skill expression, OSRS PvP-style mind games.
+1. **The flick is sacred.** Tick-perfect timing is the soul of the game. It is *never* sold, *never* RNG'd, *never* upgraded away. Skill is the only thing that wins a battle.
+2. **Read, don't react-spam.** Information is telegraphed and fair. Mastery is *reading* the fight and *syncing* to the rhythm — not mashing.
+3. **Defense feeds offense.** Every system loops perfect defense back into power. The best Warden is the one who barely gets touched and hits like a god for it.
+4. **Easy to enter, endless to master.** Fun in 60 seconds. A skill ceiling measured in years.
+5. **Collect to express, not to win.** Your roster is *strategy and identity*, never a stat-check that beats a better player.
+6. **Built to be watched.** Every choice considers the spectator. If a clip of it wouldn't make chat lose its mind, we can do better.
 
 ---
 
-## 3. The Pokémon layer: collection, types, teams
+## 2. The hook (the elevator clip)
 
-### 3.1 Elemental type chart (original)
+A Warden is cornered by a **Tempestrix**, a storm-roc whose strikes split into two landing ticks at
+1-tick cadence. Energy at **4%**. The player snap-flicks **Storm — Tide — Storm — Ember** in perfect
+rhythm, negating a barrage that would flatten anyone else, Resolve maxing with every Perfect. On the
+last beat they dump it all into a counter-Strike that detonates the roc. Chat explodes.
 
-Six core elements at launch (kept tight for readability; expandable later):
+**That moment** — legible, dramatic, obviously skillful — is the product. Everything is designed to
+manufacture and broadcast it.
+
+---
+
+## 3. The world, in one breath
+
+The six elements were once living forces of the world. An age ago they were **Sundered** and died;
+their death-echoes became **Wraiths** — bound, hungry, half-mad spirits. The world has been dimming
+ever since, in a permanent dusk, and its heart is failing. You can still *feel* it beat — a slow,
+600-millisecond **pulse**.
+
+**Wardens** are those who learned to move in time with that fading heartbeat: to raise an elemental
+**Ward** on the exact beat a blow lands, and to **bind** Wraiths to their will. The tick is not a UI
+element. **The tick is the world's heartbeat, and you are flicking in time with the apocalypse.**
+
+(Full lore, regions, and antagonist in [WORLD.md](WORLD.md).)
+
+---
+
+## 4. The core mechanic: Warding (the "flick")
+
+The heart of the game and our moat — an original reinterpretation of OSRS prayer-flicking:
+**tick-perfect toggling of a protective effect under a tight resource constraint, where the *element*
+you flick is dictated by type matchups.** Full mechanical spec lives in
+[COMBAT_DEEPDIVE.md](COMBAT_DEEPDIVE.md); the essentials:
+
+### 4.1 The tick clock
+- Combat advances in fixed **600ms ticks** (the world's heartbeat). A visible pulse + audio click +
+  optional haptic keep you in rhythm. Readability is everything — the player must always *feel* the beat.
+
+### 4.2 Wards are flicked, not held
+- Each element has a **Ward** (Ward-of-Ember, Ward-of-Tide, …) on a key/button.
+- A Ward is **toggled on for a tick** and auto-drops. The "flick."
+- **Holding a Ward up drains energy (Aether) fast; leaving it down costs nothing and regenerates.**
+
+### 4.3 The flick loop (why it's deep)
+- Incoming attacks have an **element** and a **landing tick**, shown by a telegraph wind-up.
+- Raise the **correct** Ward on the landing tick → **negate** the hit *and* bank **Resolve** (counter-meter).
+- Wrong Ward / no Ward → take the hit and feed the enemy.
+- Optimal play: flick the right Ward on the exact landing tick and drop it — spending ~1 tick of energy
+  instead of holding for many. Skilled = barely spends energy, blocks everything. Novice = gets hit or burns out.
+
+### 4.4 Timing grades (the rhythm-game layer)
+Each flick is graded by *when* the correct Ward goes up relative to landing:
+
+| Grade | What happened | Result |
+| --- | --- | --- |
+| **Perfect** | Correct Ward raised *on the landing beat* (tight window) | Full negate · **max Resolve** · ~1 tick energy. The flick. |
+| **Clean** | Correct Ward up across landing but raised early (held) | Full negate · less Resolve · more energy spent. Safe but wasteful. |
+| **Graze** | Slightly off / partial overlap | ~50% damage · tiny Resolve. |
+| **Miss** | Wrong Ward or none | Full damage · enemy gains Momentum. |
+
+This is the elegant synthesis: **Perfect is simultaneously the safest, cheapest, *and* most offensive
+play** — so OSRS conservation and rhythm-game precision become the *same* skill.
+
+### 4.5 Defense feeds offense
+Perfect flicks fill **Resolve**; spend Resolve on your Wraith's **Strikes**, which the *opponent* must
+then Ward. The better you defend, the harder you hit. (Economy detail in the deep-dive.)
+
+### 4.6 Skill purity (a hard rule)
+**Timing windows are universal and fixed.** They are *never* widened by levels, stats, items, or
+purchases. You cannot buy or grind better timing. Stats and gear affect HP, energy economy, damage,
+and Resolve — never the leniency of the flick. (The only thing that tightens a window is a **visible,
+in-battle Curse**, which is fair and counterable.) This protects the competitive integrity that makes
+the game worth watching.
+
+---
+
+## 5. The collector layer: elements, Wraiths, teams
+
+### 5.1 The element wheel (original)
+Six core elements (tight for readability, expandable later), plus a rare seventh.
 
 | Element | Beats | Weak to | Flavor |
 | --- | --- | --- | --- |
@@ -90,93 +111,123 @@ Six core elements at launch (kept tight for readability; expandable later):
 | **Tide** (water) | Ember, Stone | Bloom, Storm | drowned spirits |
 | **Storm** (air/lightning) | Tide, Bloom | Stone, Frost | shrieking wind |
 | **Stone** (earth) | Ember, Storm | Tide, Bloom | grave-rock |
-| **Bloom** (nature/decay) | Tide, Stone | Ember, Storm | rot & overgrowth |
+| **Bloom** (decay/nature) | Tide, Stone | Ember, Storm | rot & overgrowth |
 | **Frost** (ice) | Storm, Bloom | Ember, Stone | the cold death |
+| **Hollow** (void) ★ | — | — | the eldritch wound; neutral matchups, breaks rules |
 
-Plus a rare 7th, **Hollow** (eldritch/void), introduced later — neutral matchups but unique
-mechanics (e.g. Wards that decay, attacks that can't be fully negated). This is the "dark
-fantasy" half of the theme and a strong cosmetic/collector hook.
+**The crucial twist:** type advantage doesn't just multiply damage — it **shapes the timing puzzle**.
+An advantaged attacker telegraphs *faster/feinted* strikes against you, and your off-element Wards cost
+more, so matchups change *what you have to flick and how hard*, not just a number. The chart matters to
+skilled play, not just stat-checking.
 
-- Type advantage in WARDBOUND doesn't just scale damage — it changes **which Wards an opponent
-  forces on you**, i.e., it shapes the *timing puzzle*, not just a damage multiplier. This makes
-  the matchup chart matter to skilled play, not just stat-checking.
+### 5.2 Wraiths (creatures)
+- Each has: **element** (sometimes dual), **stats** (Vigor / Aether / Flow / Power / Resolve-gen),
+  **2–4 Strikes** across elements, and a **signature ability** that interacts with the flick loop.
+- **100% original designs** in the dark-elemental style (see [BESTIARY.md](BESTIARY.md) for the launch roster:
+  a starter trio, notable mid-game Wraiths, and a Hollow legendary).
+- ~24–30 at launch — deep meta, sane art budget.
 
-### 3.2 Wraiths (creatures)
+### 5.3 Binding (catching) is a skill, not a dice roll
+Weaken a wild Wraith, then win the **Binding Rite** — a tightened solo flick gauntlet where the Wraith
+lashes out and you must Perfect a short escalating sequence to seal the bind. **Skill catches, not RNG.**
+A great Warden can bind a rare Wraith on low odds by simply out-flicking it. (Streamable tension.)
 
-- Each Wraith has: an **element** (sometimes dual), **stats** (Vigor/HP, Aether/energy pool,
-  regen, Resolve gen), and **2–4 Strikes** of various elements + a **signature ability**.
-- **Original designs only.** Theme: cursed elemental spirits with an eldritch edge (think:
-  a drowned lantern-ghost for Tide, a cracked-magma golem for Ember/Stone, a void-moth for Hollow).
-- ~24–30 Wraiths at launch is plenty for a deep meta without art blowing up scope.
-- **Binding (catching):** weaken a wild Wraith in battle, then win a short "binding flick"
-  minigame (a tightened version of the core mechanic) to capture it. Catching *is* the mechanic —
-  no random RNG ball-throw; skill is rewarded.
-
-### 3.3 Teams & progression
-
-- Build a **team of up to 6**; swap Wraiths mid-battle (swap costs a tick + energy → tactical).
-- **Leveling:** Wraiths gain levels from battles, raising stats and unlocking Strikes.
-- **Evolution / "Ascension":** at thresholds, Wraiths Ascend into stronger eldritch forms
-  (visual upgrade + new signature ability). Great collection + cosmetic hook.
-- **Affinity:** a Warden masters specific elements over time, unlocking faster Ward flicks or
-  cheaper Wards for those elements — a meta-progression that rewards specialization.
+### 5.4 Teams, leveling, Ascension
+- **Team of up to 6.** Swapping mid-battle costs a tick + energy → a real tactical decision, and a
+  swap-in can "Ward-cover" for a teammate on a read.
+- **Leveling** raises stats and unlocks Strikes.
+- **Ascension** (evolution): at thresholds a Wraith Ascends into a stronger, eldritch-tinged form —
+  new signature, dramatic visual upgrade. Collection + cosmetic hook.
+- **Affinity (Warden meta-progression):** mastering an element over time unlocks *flavor & economy*
+  perks (cheaper off-Wards, faster Resolve with that element) — **never** timing leniency.
 
 ---
 
-## 4. Game modes
+## 6. Status: Curses (depth without clutter)
+
+Curses are the spice — and thematically perfect, because they attack your **ability to flick** rather
+than just your health:
+
+| Curse | Element | Effect |
+| --- | --- | --- |
+| **Sear** | Ember | Your next Ward costs double Aether. |
+| **Drown** | Tide | Aether drain while Warding is increased. |
+| **Static** | Storm | Telegraphs reveal one beat later (less reaction time). |
+| **Shatter** | Stone | Your next *missed* Ward hits much harder. |
+| **Sap** | Bloom | Reduced Resolve gain. |
+| **Rime** | Frost | Your Perfect timing window narrows briefly (visible, counterable). |
+| **Unmaking** | Hollow | A struck Ward *decays* — it can't be held, only snap-flicked. |
+
+Curses are always **visible, telegraphed, and counterable** — they raise the skill expression, they
+never feel like unseen RNG. They make matchups a battle over your *flicking itself*.
+
+---
+
+## 7. Game modes
 
 | Mode | Purpose | Notes |
 | --- | --- | --- |
-| **Story / Hunt** | Onboarding + single-player content | Region-based, escalating telegraph difficulty, boss Wraiths. The drip-feed that teaches flicking. |
-| **Wild Hunts** | Catch & grind | Roam zones, find & bind wild Wraiths. |
-| **Trials (PvE skill)** | Pure skill flex | Endless/ramping flick gauntlets, leaderboards. Highly streamable & clip-able. |
-| **Duels (PvP)** | The skill endgame | 1v1 real-time flick duels. Ranked ladder. This is the esport/streaming engine. |
-| **Daily Ward** | Retention | One curated puzzle/gauntlet per day, shared seed, leaderboard. Cheap to run, sticky. |
+| **Story / Hunt** | Onboarding + single-player spine | Region-based, escalating telegraph difficulty, boss Wraiths. The drip-feed that teaches flicking. |
+| **Wild Hunts** | Catch & grind | Roam the dusk-zones; find & bind wild Wraiths via the Binding Rite. |
+| **Trials** | Pure skill flex (PvE) | Endless/ramping flick gauntlets; leaderboards. Maximally streamable. |
+| **Duels (PvP)** | The skill endgame | 1v1 real-time flick duels; ranked ladder. The esport/streaming engine. |
+| **Ghost Duels** | Async PvP | Race a recorded "ghost" of another Warden's run — PvP thrill, no netcode. (Great early-launch bridge.) |
+| **Daily Ward** | Retention | One curated seeded puzzle/gauntlet a day; shared leaderboard; cheap to run, very sticky. |
 
-PvP is the long-term heart but PvE-first is the right launch order (teach the mechanic, build the
-roster, prove fun) — see ROADMAP.
-
----
-
-## 5. The "first 60 seconds" (new-player flow)
-
-1. Cold open: a single telegraphed Ember strike. Big cue. Player flicks Ember Ward, negates it,
-   feels powerful. (No menus, no text walls.)
-2. Second beat: two alternating elements — player learns Wards are element-specific.
-3. They bind their first Wraith via the binding flick. Now they *own* something.
-4. Hook: "A stronger Wraith lurks deeper." → into the first short Hunt.
-
-The goal: **fun in under 60 seconds, ownership in under 3 minutes** — critical for web retention.
+Launch order is PvE-first (teach the mechanic, build the roster, prove fun, de-risk netcode) — see ROADMAP.
 
 ---
 
-## 6. Accessibility & feel
+## 8. The teaching curve (first 60 seconds → first hour)
 
-- **Adjustable tick speed** in casual modes (practice at 800ms, ranked locked at 600ms).
-- **Audio + visual + haptic** tick cues (never audio-only — accessibility and clarity).
-- **Colorblind-safe** element palette + distinct shapes/icons per element (never color-only).
-- **Input latency budget:** we must measure and minimize input→resolve latency; a flick game lives
-  or dies on responsiveness. This drives the tech choice (see TECH_STACK.md).
-- **Practice mode / metronome trainer:** let players drill flicks. Skill games retain when players
-  feel themselves improving.
+The #1 risk for a skill game is bouncing newcomers. We teach by *play*, never walls of text:
+
+1. **0:00 — One clear strike.** A single telegraphed Ember blow, huge cue. Flick Ward-of-Ember, negate, feel powerful. No menus.
+2. **0:20 — Elements matter.** Two alternating elements; you learn Wards are element-specific.
+3. **1:00 — Ownership.** Win your first Binding Rite; you now *own* a Wraith.
+4. **3:00 — The loop.** First short Hunt: a Resolve Strike, a swap, an Ascension preview dangled.
+5. **The ramp** (single → mixed → faster → feints → stacked) is metered out across the Story so players are *always* ~one notch past comfortable. A **Practice/Metronome trainer** lets them drill any pattern.
+
+**Targets:** fun < 60s, ownership < 3min, "I'm getting better" felt within the first session.
 
 ---
 
-## 7. What we are explicitly NOT doing (IP safety)
+## 9. Why it's built to be watched (the viral engine)
+
+Skill ceiling + clip-ability is our cheapest, biggest marketing channel. So these are *features*, not afterthoughts:
+
+- **Instant replays + one-click clip export** (vertical-format friendly for TikTok/Shorts/Reels).
+- **Ghost Duels & shared Daily Ward seeds** — built-in "can you beat my run?" loops.
+- **Spectator mode** with a clean, legible HUD (telegraphs, grades, energy, Resolve readable to viewers).
+- **Spectacular, cosmetic-able Perfect-flick FX** — the most-repeated, most-watched action gets the most visual love (and is prime cosmetic real estate; see MONETIZATION.md).
+- **Leaderboards everywhere** (Trials, Daily Ward, ranked Duels).
+
+---
+
+## 10. Accessibility & feel (non-negotiable for a flick game)
+
+- **Tick speed adjustable in casual/practice** (e.g. 800ms training); ranked locked at 600ms.
+- **Multi-sensory cues** — visual + audio + optional haptic. *Never* audio-only.
+- **Colorblind-safe palette + distinct shape/icon per element.** Never color-only.
+- **Input latency is a first-class metric.** We instrument input→resolve from day one; audio cues use the sample-accurate Web Audio clock, not timers. (See TECH_STACK.md.)
+- **Comfort:** no required rapid mashing — flicking is *precise*, not *frantic*; remappable inputs; one-handed/relaxed layouts.
+- **Practice mode** so players can *feel themselves improve* — the engine of skill-game retention.
+
+---
+
+## 11. What we are explicitly NOT doing (IP safety)
 
 - No RuneScape/OSRS or Pokémon **assets, names, sounds, creatures, or UI**.
-- No "Protect from Melee/Magic/Range" naming, no Pokémon type names, no Pokéball, no gym badges.
-- We borrow the **mechanic** (tick-flicking, type matchups, collection) — which is legally fair —
-  and express it with **entirely original** worldbuilding, art, audio, and code.
-- See MONETIZATION.md §"Legal & IP" for the reasoning and sources.
+- No "Protect from Melee/Magic/Range" naming, no Pokémon type names, no Poké-anything, no gym badges.
+- We borrow only the **mechanics** (tick-flicking, type matchups, collection) — legally fair — and
+  express them with **entirely original** world, art, audio, names, and code. (Reasoning + sources in MONETIZATION.md.)
 
 ---
 
-## 8. Open design questions (to decide together as we build)
+## 12. Open design questions (decide together as we build)
 
-- Final element count at launch (6 vs 5) and whether dual-typing ships in v1.
-- Should energy (Aether) be per-Wraith or per-Warden (shared pool)? (Leaning per-Warden for the
-  pure prayer-flick feel.)
-- PvP netcode model — rollback-style vs server-authoritative tick lockstep (affects fairness of a
-  timing game heavily; big technical decision flagged in ROADMAP).
-- How punishing should "wrong Ward" be — full damage vs partial? (Tuning, decide via playtests.)
+- Final element count at launch (6 vs 5); does **dual-typing** ship in v1?
+- **Aether** per-Warden (shared pool, purest prayer-flick feel — current lean) vs per-Wraith?
+- **Wrong-Ward punishment**: full damage vs partial — tune via playtests.
+- PvP netcode model (lockstep vs rollback) — big call, deliberately deferred (Ghost Duels bridge us).
+- How much of the **Curse** system ships at launch vs post-launch.

@@ -6,10 +6,21 @@ A real-time creature-collector battler that fuses **OSRS-style prayer-flick timi
 **Pokémon-style collection and team-building** — wrapped in an original *dark-elemental*
 world of cursed spirits called **Wraiths**.
 
-You don't pick moves from a passive menu. You fight on a **tick clock** (0.6s ticks), reading
-your opponent's telegraphed attacks and **flicking the matching elemental Ward** on the exact
-landing tick to negate damage while conserving a tight energy pool. Easy to learn, with a
-near-infinite skill ceiling — the kind of mechanic people stream.
+You don't pick moves from a passive menu. You fight on a **tick clock** — and here's the keystone
+idea that ties the whole game together: **the tick is the dying heartbeat of a broken world, and
+you flick in time with the apocalypse.** On that 600ms pulse you read your opponent's telegraphed
+attacks and **flick the matching elemental Ward** on the exact landing beat to negate damage while
+conserving a tight energy pool. Easy to learn, with a near-infinite skill ceiling — the kind of
+mechanic people stream.
+
+## Design pillars
+
+1. **The flick is sacred** — timing skill is the soul; never sold, never RNG'd, never upgraded away.
+2. **Read, don't react-spam** — info is telegraphed and fair; mastery is reading + rhythm.
+3. **Defense feeds offense** — perfect defense *is* your offense.
+4. **Easy to enter, endless to master** — fun in 60s, a ceiling measured in years.
+5. **Collect to express, not to win** — your roster is strategy & identity, never a stat-check.
+6. **Built to be watched** — if a clip of it wouldn't make chat lose its mind, we can do better.
 
 ---
 
@@ -29,7 +40,10 @@ near-infinite skill ceiling — the kind of mechanic people stream.
 
 ## Documentation
 
-- **[docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)** — the full game design (the mechanic, combat, creatures, progression).
+- **[docs/GAME_DESIGN.md](docs/GAME_DESIGN.md)** — the master design (pillars, the flick, collection, modes, teaching curve).
+- **[docs/WORLD.md](docs/WORLD.md)** — world bible & art direction (the lore that makes the tick *canon*).
+- **[docs/BESTIARY.md](docs/BESTIARY.md)** — the Wraiths: starter trio, notable creatures, the Hollow legendary.
+- **[docs/COMBAT_DEEPDIVE.md](docs/COMBAT_DEEPDIVE.md)** — full flick spec with timing windows & worked tick-timelines.
 - **[docs/TECH_STACK.md](docs/TECH_STACK.md)** — engine/tech decision, with research.
 - **[docs/MONETIZATION.md](docs/MONETIZATION.md)** — business model and how we make money (ethically).
 - **[docs/ROADMAP.md](docs/ROADMAP.md)** — milestones from prototype to launch.
