@@ -7,6 +7,7 @@ export interface BindingOptions {
   element: Element; // the wild Wraith's element
   seed?: number;
   count?: number; // number of strikes in the rite (rarer = more)
+  threshold?: number; // Bind meter needed to catch (rarer = higher)
 }
 
 /**
@@ -19,7 +20,7 @@ export interface BindingOptions {
 export class BindingRite {
   readonly combat: Combat;
   readonly total: number;
-  readonly threshold = 65;
+  readonly threshold: number;
 
   bindMeter = 20; // a little starting goodwill
   finished = false;
@@ -31,6 +32,7 @@ export class BindingRite {
     this.combat = new Combat(now, { playerElement: opts.element, autoDirector: false, seed: opts.seed });
     this.combat.playerVigor = 1e9; // you cannot die during a Rite
     this.total = opts.count ?? 5;
+    this.threshold = opts.threshold ?? 65;
 
     const startTick = 3;
     const spacing = 2; // tight cadence

@@ -1,89 +1,93 @@
+import type { Mon } from './mon';
+import { statsOf } from './mon';
 import type { Element } from './types';
 
-/** One bound species in the player's collection. */
-export interface BoundEntry {
-  name: string;
-  element: Element;
-  count: number; // how many of this species the Warden has bound
+const PARTY_CAP = 6;
+
+/** Per-species collection record. */
+export interface DexEntry {
+  speciesId: string;
+  bound: number; // total bound of this species
+  aberrant: boolean; // has the Warden bound an Aberrant of it?
 }
 
-/** Serializable snapshot for save/load. */
 export interface RosterState {
-  collection: Record<string, BoundEntry>;
-  partyOrder: string[];
+  party: Mon[];
+  dex: Record<string, DexEntry>;
   activeIndex: number;
 }
 
 /**
- * The Warden's collection + active party. Pure data — no DOM (persistence lives in game/save.ts).
- * Binding a new species adds it to the party order; re-binding increments its count.
+ * The Warden's party (up to 6 active Mons) + a dex of everything bound. Pure data;
+ * persistence lives in game/save.ts. See docs/PROGRESSION.md.
  */
 export class Roster {
-  private collection = new Map<string, BoundEntry>();
-  partyOrder: string[] = [];
+  party: Mon[] = [];
   activeIndex = 0;
+  private dex = new Map<string, DexEntry>();
 
   constructor(state?: RosterState) {
     if (state) {
-      for (const [k, v] of Object.entries(state.collection)) this.collection.set(k, { ...v });
-      this.partyOrder = [...state.partyOrder];
+      this.party = state.party.map((m) => ({ ...m }));
       this.activeIndex = state.activeIndex;
+      for (const [k, v] of Object.entries(state.dex)) this.dex.set(k, { ...v });
     }
-  }
-
-  /** Bind a Wraith. Returns true if it's a brand-new species for the collection. */
-  add(name: string, element: Element): boolean {
-    const existing = this.collection.get(name);
-    if (existing) {
-      existing.count++;
-      return false;
-    }
-    this.collection.set(name, { name, element, count: 1 });
-    this.partyOrder.push(name);
-    return true;
-  }
-
-  has(name: string): boolean {
-    return this.collection.has(name);
   }
 
   isEmpty(): boolean {
-    return this.partyOrder.length === 0;
+    return this.party.length === 0;
   }
 
-  /** The currently-selected Wraith to battle with. */
-  active(): BoundEntry {
-    const name = this.partyOrder[this.activeIndex];
-    const e = name ? this.collection.get(name) : undefined;
-    if (!e) throw new Error('Roster is empty — no active Wraith');
-    return e;
+  active(): Mon {
+    const m = this.party[this.activeIndex];
+    if (!m) throw new Error('Roster is empty — no active Wraith');
+    return m;
   }
 
-  /** Cycle the active Wraith to the next in the party. */
   cycle(): void {
-    if (this.partyOrder.length > 0) this.activeIndex = (this.activeIndex + 1) % this.partyOrder.length;
+    if (this.party.length > 0) this.activeIndex = (this.activeIndex + 1) % this.party.length;
   }
 
-  /** Number of distinct species bound. */
+  /** Bind a Mon: record it in the dex and add to the party if there's room. Returns true if new species. */
+  addCatch(mon: Mon): boolean {
+    const entry = this.dex.get(mon.speciesId);
+    const isNew = !entry;
+    if (entry) {
+      entry.bound++;
+      entry.aberrant = entry.aberrant || mon.aberrant;
+    } else {
+      this.dex.set(mon.speciesId, { speciesId: mon.speciesId, bound: 1, aberrant: mon.aberrant });
+    }
+    if (this.party.length < PARTY_CAP) this.party.push(mon);
+    return isNew;
+  }
+
+  partyFull(): boolean {
+    return this.party.length >= PARTY_CAP;
+  }
+
   speciesCount(): number {
-    return this.partyOrder.length;
+    return this.dex.size;
   }
 
-  /** Total Wraiths bound (including duplicates). */
   totalBound(): number {
     let n = 0;
-    for (const e of this.collection.values()) n += e.count;
+    for (const e of this.dex.values()) n += e.bound;
     return n;
   }
 
-  entries(): BoundEntry[] {
-    return this.partyOrder.map((n) => this.collection.get(n)!);
+  /** Party display labels (name + current species element via stats). */
+  partyLabels(): { name: string; element: Element; active: boolean }[] {
+    return this.party.map((m, i) => {
+      const s = statsOf(m);
+      return { name: s.name, element: s.element, active: i === this.activeIndex };
+    });
   }
 
   toJSON(): RosterState {
-    const collection: Record<string, BoundEntry> = {};
-    for (const [k, v] of this.collection) collection[k] = { ...v };
-    return { collection, partyOrder: [...this.partyOrder], activeIndex: this.activeIndex };
+    const dex: Record<string, DexEntry> = {};
+    for (const [k, v] of this.dex) dex[k] = { ...v };
+    return { party: this.party.map((m) => ({ ...m })), dex, activeIndex: this.activeIndex };
   }
 
   static from(state: RosterState): Roster {

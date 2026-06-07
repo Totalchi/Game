@@ -18,6 +18,33 @@ export interface CombatOptions {
   seed?: number;
   /** Auto-spawn enemy telegraphs (true for play, false for deterministic tests). */
   autoDirector?: boolean;
+  /** Player Wraith stats (defaults preserve the original prototype numbers). */
+  stats?: Partial<PlayerStats>;
+  /** Enemy stats. */
+  enemy?: Partial<EnemyStats>;
+}
+
+export interface PlayerStats {
+  vigor: number;
+  aetherMax: number;
+  aetherRegenPerMs: number;
+  strikePower: number;
+  bonusResolveOnPerfect: number;
+}
+
+export interface EnemyStats {
+  vigor: number;
+  powerMult: number;
+}
+
+function defaultPlayerStats(p?: Partial<PlayerStats>): PlayerStats {
+  return {
+    vigor: p?.vigor ?? CFG.playerVigor,
+    aetherMax: p?.aetherMax ?? CFG.aetherMax,
+    aetherRegenPerMs: p?.aetherRegenPerMs ?? CFG.aetherRegenPerMs,
+    strikePower: p?.strikePower ?? CFG.strikePower,
+    bonusResolveOnPerfect: p?.bonusResolveOnPerfect ?? 0,
+  };
 }
 
 /**
@@ -26,15 +53,20 @@ export interface CombatOptions {
  * Time is supplied in ms (performance.now() in the browser). No DOM/engine deps.
  */
 export class Combat {
-  readonly playerElement: Element;
+  playerElement: Element;
   readonly startTime: number;
 
   phase: Phase = 'playing';
-  aether: number = CFG.aetherMax;
+  aether: number;
   resolve = 0;
-  playerVigor: number = CFG.playerVigor;
-  enemyVigor: number = CFG.enemyVigor;
+  playerVigor: number;
+  playerVigorMax: number;
+  enemyVigor: number;
+  enemyVigorMax: number;
   momentum = 0;
+
+  private ps: PlayerStats;
+  private enemyPowerMult: number;
 
   // Stats for the player to feel progress.
   perfects = 0;
@@ -66,6 +98,29 @@ export class Combat {
     this.rng = makeRng(opts.seed ?? 1);
     this.auto = opts.autoDirector ?? true;
     this.nextSpawnTick = 2; // first attack lands a couple ticks in
+
+    this.ps = defaultPlayerStats(opts.stats);
+    this.enemyPowerMult = opts.enemy?.powerMult ?? 1;
+    this.aether = this.ps.aetherMax;
+    this.playerVigor = this.ps.vigor;
+    this.playerVigorMax = this.ps.vigor;
+    this.enemyVigor = opts.enemy?.vigor ?? CFG.enemyVigor;
+    this.enemyVigorMax = this.enemyVigor;
+  }
+
+  /** Swap in a different Wraith mid-battle: new element + stats + its current Vigor. */
+  setActive(stats: Partial<PlayerStats>, element: Element, currentVigor: number, now: number): void {
+    this.dropWard(now);
+    this.ps = defaultPlayerStats(stats);
+    this.playerElement = element;
+    this.playerVigor = currentVigor;
+    this.playerVigorMax = this.ps.vigor;
+    this.aether = Math.min(this.aether, this.ps.aetherMax);
+  }
+
+  /** Max Aether for the active Wraith (renderer uses this for the bar). */
+  get aetherMax(): number {
+    return this.ps.aetherMax;
   }
 
   // ---- time helpers ----
@@ -109,8 +164,9 @@ export class Combat {
     if (this.phase !== 'playing') return false;
     if (this.resolve < CFG.strikeCost) return false;
     this.resolve -= CFG.strikeCost;
-    this.enemyVigor = Math.max(0, this.enemyVigor - CFG.strikePower);
-    this.float(`STRIKE -${CFG.strikePower}`, 'strike', now);
+    const dmg = Math.round(this.ps.strikePower);
+    this.enemyVigor = Math.max(0, this.enemyVigor - dmg);
+    this.float(`STRIKE -${dmg}`, 'strike', now);
     if (this.enemyVigor <= 0) this.phase = 'won';
     return true;
   }
@@ -140,7 +196,7 @@ export class Combat {
       this.aether = Math.max(0, this.aether - dt * CFG.aetherDrainPerMs);
       if (this.aether <= 0) this.dropWard(now); // burned out — Ward collapses
     } else {
-      this.aether = Math.min(CFG.aetherMax, this.aether + dt * CFG.aetherRegenPerMs);
+      this.aether = Math.min(this.ps.aetherMax, this.aether + dt * this.ps.aetherRegenPerMs);
     }
 
     if (this.auto) this.runDirector(now);
@@ -203,17 +259,18 @@ export class Combat {
   }
 
   private applyGrade(grade: Grade, t: Telegraph, now: number): void {
-    this.resolve = Math.min(CFG.resolveMax, this.resolve + CFG.resolveGain[grade]);
+    const bonus = grade === 'perfect' ? this.ps.bonusResolveOnPerfect : 0;
+    this.resolve = Math.min(CFG.resolveMax, this.resolve + CFG.resolveGain[grade] + bonus);
 
     const mult = damageMultiplier(t.element, this.playerElement);
-    const momentumMult = 1 + this.momentum * CFG.momentumDamagePerStack;
+    const dmg = t.power * mult * (1 + this.momentum * CFG.momentumDamagePerStack) * this.enemyPowerMult;
 
     if (grade === 'miss') {
-      this.playerVigor = Math.max(0, this.playerVigor - t.power * mult * momentumMult);
+      this.playerVigor = Math.max(0, this.playerVigor - dmg);
       this.momentum++;
       this.streak = 0;
     } else if (grade === 'graze') {
-      this.playerVigor = Math.max(0, this.playerVigor - 0.5 * t.power * mult * momentumMult);
+      this.playerVigor = Math.max(0, this.playerVigor - 0.5 * dmg);
       this.streak = 0;
     } else {
       // perfect / clean negate fully

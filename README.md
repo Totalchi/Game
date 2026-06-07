@@ -60,6 +60,12 @@ npm run dev      # open the printed localhost URL in a browser
    threshold and **catch it**. Bound Wraiths join your collection — which is **saved** between
    sessions. **ENTER** returns you to the world.
 
+**Depth that's in:** ~18 data-driven Wraiths across 6 elements, each with stats and a **signature**
+(Everburn, Riptide, Tempo, Aegis, Wither, Rime, Unmaking); **leveling & Ascension** (Wraiths evolve
+as they grow); **mid-battle swapping** (Q/E) with per-Wraith Vigor; and **rarity** — most wilds are
+common, but **Revenants**, a **mythic** Voidmoth, and ultra-rare **Aberrant** ("shiny") variants
+lurk, each with a longer, harder Binding Rite. Skill catches them, never your wallet.
+
 > The overworld is intentionally chunky "programmer-art" — it proves the *format* (explore → encounter
 > → flick-battle → return). Real pixel-art tiles/sprites swap in later (see `docs/ART_BIBLE.md` §0).
 

@@ -38,10 +38,13 @@ The single most important phase. If this isn't fun, nothing else matters.
 - [x] Full 6-element type chart wired into combat (from Phase 1)
 - [x] **Binding Rite** — catching as a skill (weaken in battle → tight flick gauntlet → bind meter)
 - [x] **Collection + party** that persists (localStorage); switch active Wraith (Tab)
+- [x] **Data-driven Wraiths** (~18 species, 6 elements) with stats + **signatures** (Everburn, Riptide, Tempo, Aegis, Wither, Rime, Unmaking)
+- [x] **Leveling & Ascension** (XP from wins; evolve at thresholds, e.g. Ashling→Cindreaver→Pyrelich)
+- [x] **Mid-battle swap** (Q/E) with per-Wraith Vigor + forced swap on faint
+- [x] **Rarity tiers** (common→revenant→mythic) + **Aberrant** "shiny" variants; rarer = longer/harder Rite + weighted spawns
 - [ ] Swap programmer-art for real pixel-art tiles/sprites (needs assets — see ART_BIBLE.md §0)
-- [ ] 8–12 Wraiths with distinct stats/Strikes/signatures
-- [ ] Mid-battle swap, leveling, Ascension (evolution)
-- [ ] Rarity tiers + conditional spawns (RARITY.md); rarer = longer/harder Rite
+- [ ] Per-Wraith Strike sets + Curses in combat (telegraph behaviours beyond stats)
+- [ ] Conditional/world-event spawns (RARITY.md §4)
 - [ ] Short Story/Hunt with escalating telegraphs + a boss
 
 **Gate:** a player will catch, build a team, and finish the intro Hunt — and want more.

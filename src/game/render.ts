@@ -6,10 +6,24 @@ import { ELEMENT_COLOR, ELEMENT_GLYPH, GRADE_COLOR } from './colors';
 
 const LANE_LEAD_MS = 3 * CFG.tickMs; // how far ahead the lane shows incoming attacks
 
+export interface PartyPip {
+  name: string;
+  element: Element;
+  vigorFrac: number;
+  active: boolean;
+  fainted: boolean;
+}
+
 export interface RenderInfo {
   wraithName: string;
+  wraithLevel: number;
+  signatureName?: string;
   enemyName: string;
+  enemyLevel: number;
   enemyElement: Element;
+  enemyRarity?: string;
+  enemyRarityColor?: string;
+  party: PartyPip[];
 }
 
 export interface RiteInfo {
@@ -56,8 +70,14 @@ function drawEnemy(ctx: CanvasRenderingContext2D, c: Combat, info: RenderInfo, W
   ctx.fillStyle = ELEMENT_COLOR[info.enemyElement];
   ctx.font = 'bold 20px ui-monospace, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(`${info.enemyName}  ${ELEMENT_GLYPH[info.enemyElement]} ${info.enemyElement}`, 24, 36);
-  bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / CFG.enemyVigor, '#ff5566', 'WILD WRAITH VIGOR');
+  ctx.fillText(`${info.enemyName}  Lv${info.enemyLevel}  ${ELEMENT_GLYPH[info.enemyElement]} ${info.enemyElement}`, 24, 36);
+  if (info.enemyRarity && info.enemyRarity !== 'common') {
+    ctx.fillStyle = info.enemyRarityColor ?? '#fff';
+    ctx.font = 'bold 13px ui-monospace, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`✦ ${info.enemyRarity.toUpperCase()}`, W - 24, 36);
+  }
+  bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / c.enemyVigorMax, '#ff5566', 'WILD WRAITH VIGOR');
 }
 
 function drawLane(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: number, H: number): void {
@@ -134,7 +154,7 @@ function drawKnell(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: numbe
 
 function drawBars(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
   const y = H - 132;
-  bar(ctx, 24, y, (W - 72) / 2, 16, c.aether / CFG.aetherMax, '#48c0ff', `AETHER ${Math.round(c.aether)}`);
+  bar(ctx, 24, y, (W - 72) / 2, 16, c.aether / c.aetherMax, '#48c0ff', `AETHER ${Math.round(c.aether)}`);
   const rx = 24 + (W - 72) / 2 + 24;
   const ready = c.resolve >= CFG.strikeCost;
   bar(ctx, rx, y, (W - 72) / 2, 16, c.resolve / CFG.resolveMax, ready ? '#ff7ad9' : '#9a5bb0', `RESOLVE ${Math.round(c.resolve)}${ready ? '  [SPACE = STRIKE]' : ''}`);
@@ -165,7 +185,33 @@ function drawWards(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: numbe
 }
 
 function drawPlayer(ctx: CanvasRenderingContext2D, c: Combat, info: RenderInfo, W: number, H: number): void {
-  bar(ctx, 24, H - 28, W - 48, 14, c.playerVigor / CFG.playerVigor, '#5fd35f', `${info.wraithName}  VIGOR ${Math.round(c.playerVigor)}   ·   Perfects ${c.perfects}  ·  Best streak ${c.bestStreak}`);
+  // Party pips (for mid-battle swapping).
+  if (info.party.length > 1) {
+    ctx.textAlign = 'left';
+    let x = 24;
+    const py = H - 48;
+    for (const p of info.party) {
+      const w = 90;
+      ctx.fillStyle = p.fainted ? '#2a2a32' : p.active ? ELEMENT_COLOR[p.element] : '#1b1b27';
+      ctx.fillRect(x, py, w, 14);
+      ctx.fillStyle = '#0c0b10';
+      if (!p.fainted && !p.active) {
+        ctx.fillStyle = '#3a3a4a';
+        ctx.fillRect(x, py, w * p.vigorFrac, 14);
+      }
+      ctx.strokeStyle = ELEMENT_COLOR[p.element];
+      ctx.strokeRect(x, py, w, 14);
+      ctx.fillStyle = p.active ? '#0c0b10' : p.fainted ? '#55555f' : '#cfd2e0';
+      ctx.font = '9px ui-monospace, monospace';
+      ctx.fillText(p.name.slice(0, 11), x + 3, py + 10);
+      x += w + 6;
+    }
+    ctx.fillStyle = '#7a7a8a';
+    ctx.fillText('Q/E swap', x + 2, py + 10);
+  }
+
+  const sig = info.signatureName ? `  ·  ${info.signatureName}` : '';
+  bar(ctx, 24, H - 28, W - 48, 14, c.playerVigor / c.playerVigorMax, '#5fd35f', `${info.wraithName} Lv${info.wraithLevel}  VIGOR ${Math.round(c.playerVigor)}${sig}   ·   Perfects ${c.perfects} · Streak ${c.bestStreak}`);
 }
 
 function drawFloats(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: number, H: number): void {
@@ -226,7 +272,7 @@ export function renderRite(ctx: CanvasRenderingContext2D, rite: BindingRite, now
   ctx.textAlign = 'center';
   ctx.fillText(`bind at ${rite.threshold}`, thx, my - 10);
 
-  bar(ctx, 24, H - 132, W - 48, 16, rite.combat.aether / CFG.aetherMax, '#48c0ff', `AETHER ${Math.round(rite.combat.aether)}`);
+  bar(ctx, 24, H - 132, W - 48, 16, rite.combat.aether / rite.combat.aetherMax, '#48c0ff', `AETHER ${Math.round(rite.combat.aether)}`);
   drawWards(ctx, rite.combat, W, H);
   drawFloats(ctx, rite.combat, now, W, H);
 

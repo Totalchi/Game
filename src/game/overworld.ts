@@ -1,5 +1,6 @@
-import { ELEMENTS, type Element } from '../core/types';
 import { makeRng } from '../core/rng';
+import { rollWild } from '../core/spawn';
+import type { Mon } from '../core/mon';
 
 /** Tile ids for the overworld map. */
 export const T = {
@@ -44,7 +45,7 @@ export class Overworld {
   private toPx = 0;
   private toPy = 0;
   private stepsSinceEncounter = 0;
-  pendingEncounter: Element | null = null;
+  pendingEncounter: Mon | null = null;
 
   constructor(seed = 5) {
     const rng = makeRng(seed);
@@ -109,17 +110,9 @@ export class Overworld {
       const r = makeRng(Math.floor(now) ^ (this.tx * 73856093) ^ (this.ty * 19349663))();
       if (r < 0.14) {
         this.stepsSinceEncounter = 0;
-        this.pendingEncounter = this.pickWild(now);
+        this.pendingEncounter = rollWild(Math.floor(now) ^ (this.tx * 2654435761) ^ this.ty);
       }
     }
-  }
-
-  private pickWild(now: number): Element {
-    // Cinderwaste leans Ember/Stone, with anything possible.
-    const r = makeRng(Math.floor(now * 1.7))();
-    if (r < 0.4) return 'ember';
-    if (r < 0.6) return 'stone';
-    return ELEMENTS[Math.floor(makeRng(Math.floor(now))() * ELEMENTS.length)];
   }
 
   // ---- rendering ----
