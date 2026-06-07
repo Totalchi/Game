@@ -43,6 +43,7 @@ export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, in
   ctx.fillRect(0, 0, W, H);
 
   drawEnemy(ctx, c, info, W);
+  drawCurses(ctx, c, now);
   drawLane(ctx, c, now, W, H);
   drawKnell(ctx, c, W, H);
   drawBars(ctx, c, W, H);
@@ -80,11 +81,32 @@ function drawEnemy(ctx: CanvasRenderingContext2D, c: Combat, info: RenderInfo, W
   bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / c.enemyVigorMax, '#ff5566', 'WILD WRAITH VIGOR');
 }
 
+function drawCurses(ctx: CanvasRenderingContext2D, c: Combat, now: number): void {
+  const curses = c.activeCurses(now);
+  if (curses.length === 0) return;
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 11px ui-monospace, monospace';
+  let x = 24;
+  const y = 92;
+  ctx.fillStyle = '#ff6b6b';
+  ctx.fillText('CURSED:', x, y);
+  x += 62;
+  for (const cu of curses) {
+    const w = ctx.measureText(cu.short).width + 12;
+    ctx.fillStyle = cu.color;
+    ctx.fillRect(x, y - 11, w, 15);
+    ctx.fillStyle = '#0c0b10';
+    ctx.fillText(cu.short, x + 6, y + 1);
+    x += w + 6;
+  }
+}
+
 function drawLane(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: number, H: number): void {
   const laneY = 120;
   const laneH = 90;
   const nowX = W - 120; // the NOW line, where attacks land
   const left = 40;
+  const lead = c.hasCurse('static', now) ? 2 * CFG.tickMs : LANE_LEAD_MS; // Static: less lead time
 
   // Lane backdrop + NOW line.
   ctx.fillStyle = '#101019';
@@ -104,8 +126,8 @@ function drawLane(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: numb
   for (const t of c.telegraphs) {
     const landing = c.timeOfTick(t.landingTick);
     const remaining = landing - now;
-    if (remaining > LANE_LEAD_MS || remaining < -200) continue;
-    const frac = remaining / LANE_LEAD_MS; // 1 = far, 0 = landing
+    if (remaining > lead || remaining < -200) continue;
+    const frac = remaining / lead; // 1 = far, 0 = landing
     const x = nowX - (nowX - left) * (1 - frac);
     const shown: Element = t.feintFrom && !t.flipped ? t.feintFrom : t.element;
     const col = ELEMENT_COLOR[shown];

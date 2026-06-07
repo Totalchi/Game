@@ -3,6 +3,12 @@ import { CFG } from './config';
 import { damageMultiplier } from './typechart';
 import { makeRng, pick } from './rng';
 import { ELEMENTS } from './types';
+import { CURSES, type CurseId, type CurseDef } from './curses';
+
+const RIME_PERFECT_MS = 90; // tightened window under the Rime curse
+const SEAR_EXTRA_AETHER = 14;
+const SHATTER_MISS_MULT = 1.7;
+const UNMAKING_LEAK = 0.4; // fraction of damage that leaks through a "negated" Ward
 
 export interface FloatText {
   id: number;
@@ -35,6 +41,8 @@ export interface PlayerStats {
 export interface EnemyStats {
   vigor: number;
   powerMult: number;
+  curse?: CurseId; // curse this enemy can inflict on a Miss
+  curseChance?: number; // 0..1
 }
 
 function defaultPlayerStats(p?: Partial<PlayerStats>): PlayerStats {
@@ -67,6 +75,9 @@ export class Combat {
 
   private ps: PlayerStats;
   private enemyPowerMult: number;
+  private enemyCurse?: CurseId;
+  private enemyCurseChance: number;
+  private curses = new Map<CurseId, { until: number; charges: number }>();
 
   // Stats for the player to feel progress.
   perfects = 0;
@@ -101,6 +112,8 @@ export class Combat {
 
     this.ps = defaultPlayerStats(opts.stats);
     this.enemyPowerMult = opts.enemy?.powerMult ?? 1;
+    this.enemyCurse = opts.enemy?.curse;
+    this.enemyCurseChance = opts.enemy?.curseChance ?? 0;
     this.aether = this.ps.aetherMax;
     this.playerVigor = this.ps.vigor;
     this.playerVigorMax = this.ps.vigor;
@@ -121,6 +134,44 @@ export class Combat {
   /** Max Aether for the active Wraith (renderer uses this for the bar). */
   get aetherMax(): number {
     return this.ps.aetherMax;
+  }
+
+  // ---- curses ----
+  applyCurse(id: CurseId, now: number): void {
+    const def = CURSES[id];
+    const e = this.curses.get(id);
+    this.curses.set(id, {
+      until: now + def.durationMs,
+      charges: def.kind === 'charge' ? (e?.charges ?? 0) + 1 : 0,
+    });
+    this.float(`✦${def.short}`, 'info', now);
+  }
+
+  hasCurse(id: CurseId, now: number): boolean {
+    const e = this.curses.get(id);
+    if (!e) return false;
+    if (now > e.until) {
+      this.curses.delete(id);
+      return false;
+    }
+    if (CURSES[id].kind === 'charge' && e.charges <= 0) return false;
+    return true;
+  }
+
+  private consumeCurse(id: CurseId): void {
+    const e = this.curses.get(id);
+    if (!e) return;
+    e.charges--;
+    if (e.charges <= 0) this.curses.delete(id);
+  }
+
+  /** Active curses for the HUD. */
+  activeCurses(now: number): CurseDef[] {
+    const out: CurseDef[] = [];
+    for (const id of Object.keys(CURSES) as CurseId[]) {
+      if (this.hasCurse(id, now)) out.push(CURSES[id]);
+    }
+    return out;
   }
 
   // ---- time helpers ----
@@ -145,6 +196,10 @@ export class Combat {
     this.dropWard(now);
     this.activeElement = element;
     this.intervals.push({ element, start: now, end: null });
+    if (this.hasCurse('sear', now)) {
+      this.aether = Math.max(0, this.aether - SEAR_EXTRA_AETHER); // Sear: the next Ward costs extra
+      this.consumeCurse('sear');
+    }
     this.pruneIntervals(now);
   }
 
@@ -193,7 +248,8 @@ export class Combat {
 
     // Aether economy.
     if (this.activeElement) {
-      this.aether = Math.max(0, this.aether - dt * CFG.aetherDrainPerMs);
+      const drainMult = this.hasCurse('drown', now) ? 1.6 : 1; // Drown: faster drain
+      this.aether = Math.max(0, this.aether - dt * CFG.aetherDrainPerMs * drainMult);
       if (this.aether <= 0) this.dropWard(now); // burned out — Ward collapses
     } else {
       this.aether = Math.min(this.ps.aetherMax, this.aether + dt * this.ps.aetherRegenPerMs);
@@ -238,9 +294,10 @@ export class Combat {
       }
     }
 
+    const perfMs = this.hasCurse('rime', now) ? RIME_PERFECT_MS : CFG.perfectMs; // Rime: tighter window
     let grade: Grade;
     if (coveredRaisedAt !== null) {
-      grade = landing - coveredRaisedAt <= CFG.perfectMs ? 'perfect' : 'clean';
+      grade = landing - coveredRaisedAt <= perfMs ? 'perfect' : 'clean';
     } else {
       // Graze: correct-element Ward that just barely missed the landing instant.
       let graze = false;
@@ -260,20 +317,28 @@ export class Combat {
 
   private applyGrade(grade: Grade, t: Telegraph, now: number): void {
     const bonus = grade === 'perfect' ? this.ps.bonusResolveOnPerfect : 0;
-    this.resolve = Math.min(CFG.resolveMax, this.resolve + CFG.resolveGain[grade] + bonus);
+    const sap = this.hasCurse('sap', now) ? 0.5 : 1; // Sap: less Resolve
+    this.resolve = Math.min(CFG.resolveMax, this.resolve + (CFG.resolveGain[grade] + bonus) * sap);
 
     const mult = damageMultiplier(t.element, this.playerElement);
     const dmg = t.power * mult * (1 + this.momentum * CFG.momentumDamagePerStack) * this.enemyPowerMult;
 
     if (grade === 'miss') {
-      this.playerVigor = Math.max(0, this.playerVigor - dmg);
+      let d = dmg;
+      if (this.hasCurse('shatter', now)) {
+        d *= SHATTER_MISS_MULT; // Shatter: this Miss hits harder
+        this.consumeCurse('shatter');
+      }
+      this.playerVigor = Math.max(0, this.playerVigor - d);
       this.momentum++;
       this.streak = 0;
+      this.tryEnemyCurse(now);
     } else if (grade === 'graze') {
       this.playerVigor = Math.max(0, this.playerVigor - 0.5 * dmg);
       this.streak = 0;
     } else {
-      // perfect / clean negate fully
+      // perfect / clean normally negate fully — unless Unmaking leaks some through
+      if (this.hasCurse('unmaking', now)) this.playerVigor = Math.max(0, this.playerVigor - UNMAKING_LEAK * dmg);
       if (grade === 'perfect') {
         this.perfects++;
         this.streak++;
@@ -285,6 +350,10 @@ export class Combat {
     }
 
     this.float(grade.toUpperCase(), grade, now);
+  }
+
+  private tryEnemyCurse(now: number): void {
+    if (this.enemyCurse && this.rng() < this.enemyCurseChance) this.applyCurse(this.enemyCurse, now);
   }
 
   // ---- encounter director (escalating telegraphs) ----

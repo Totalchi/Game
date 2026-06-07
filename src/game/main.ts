@@ -7,6 +7,7 @@ import { render, renderRite, type PartyPip } from './render';
 import { Audio } from './audio';
 import { SPECIES, STARTER_IDS, RARITY_COLOR, type Rarity } from '../data/species';
 import { makeMon, statsOf, gainXp, type Mon } from '../core/mon';
+import { ELEMENT_CURSE, type CurseId } from '../core/curses';
 import { ELEMENT_COLOR } from './colors';
 import { Overworld } from './overworld';
 import { loadRoster, saveRoster } from './save';
@@ -60,14 +61,22 @@ function playerStats(mon: Mon): Partial<PlayerStats> {
   };
 }
 
-function enemyStats(mon: Mon): { vigor: number; powerMult: number } {
+function enemyStats(mon: Mon): { vigor: number; powerMult: number; curse: CurseId; curseChance: number } {
   const s = statsOf(mon);
   let mult = 1 + (s.level - 5) * 0.03;
-  if (s.rarity === 'rare') mult += 0.1;
-  else if (s.rarity === 'revenant') mult += 0.2;
-  else if (s.rarity === 'mythic') mult += 0.3;
-  // Enemy Vigor is a fraction of its stat so battles stay snappy.
-  return { vigor: Math.round(s.vigor * 1.8), powerMult: Math.max(0.6, mult) };
+  let chance = 0;
+  if (s.rarity === 'uncommon') chance = 0.2;
+  else if (s.rarity === 'rare') {
+    mult += 0.1;
+    chance = 0.4;
+  } else if (s.rarity === 'revenant') {
+    mult += 0.2;
+    chance = 0.6;
+  } else if (s.rarity === 'mythic') {
+    mult += 0.3;
+    chance = 0.85;
+  }
+  return { vigor: Math.round(s.vigor * 1.8), powerMult: Math.max(0.6, mult), curse: ELEMENT_CURSE[s.element], curseChance: chance };
 }
 
 function riteFor(rarity: Rarity): { count: number; threshold: number } {
@@ -347,7 +356,10 @@ function loop(): void {
     overworld.update(now, rawKeys);
     overworld.render(ctx, now);
     drawOverworldHud();
-    if (overworld.pendingEncounter) {
+    if (overworld.pendingBoss) {
+      overworld.pendingBoss = false;
+      startBattle(now, makeMon('voidmoth', 22)); // the Hollow Shrine boss
+    } else if (overworld.pendingEncounter) {
       const m = overworld.pendingEncounter;
       overworld.pendingEncounter = null;
       startBattle(now, m);

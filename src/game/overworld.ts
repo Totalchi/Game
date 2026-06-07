@@ -14,10 +14,11 @@ export const T = {
   WALL: 7, // sanctuary wall
   ROOF: 8,
   FLOWER: 9,
+  SHRINE: 10, // the Hollow Shrine — steps here summon a boss
 } as const;
 type Tile = (typeof T)[keyof typeof T];
 
-const WALKABLE = new Set<number>([T.GRASS, T.TALL, T.PATH, T.FLOOR, T.FLOWER]);
+const WALKABLE = new Set<number>([T.GRASS, T.TALL, T.PATH, T.FLOOR, T.FLOWER, T.SHRINE]);
 
 export const TS = 30; // display tile size (px) — chunky, retro
 const MOVE_MS = 150; // ms per tile step
@@ -46,6 +47,7 @@ export class Overworld {
   private toPy = 0;
   private stepsSinceEncounter = 0;
   pendingEncounter: Mon | null = null;
+  pendingBoss = false;
 
   constructor(seed = 5) {
     const rng = makeRng(seed);
@@ -105,6 +107,10 @@ export class Overworld {
 
   private onArrive(now: number): void {
     this.stepsSinceEncounter++;
+    if (this.map[this.ty][this.tx] === T.SHRINE) {
+      this.pendingBoss = true;
+      return;
+    }
     if (this.map[this.ty][this.tx] === T.TALL && this.stepsSinceEncounter > 2) {
       // ~14% chance per tall-grass step.
       const r = makeRng(Math.floor(now) ^ (this.tx * 73856093) ^ (this.ty * 19349663))();
@@ -220,6 +226,13 @@ function drawTile(ctx: CanvasRenderingContext2D, t: Tile, x: number, y: number):
       px(ctx, x + 13, y + 13, 5, 5, '#ff5a1f');
       px(ctx, x + 6, y + 20, 4, 4, '#1fb6ff');
       break;
+    case T.SHRINE:
+      px(ctx, x, y, TS, TS, '#15131c');
+      px(ctx, x + 4, y + 4, TS - 8, TS - 8, '#0a0910'); // void core
+      px(ctx, x + 4, y + 4, TS - 8, 2, '#c77dff'); // rim-light
+      px(ctx, x + 4, y + TS - 6, TS - 8, 2, '#c77dff');
+      px(ctx, x + 12, y + 11, 6, 8, '#7a4fb0');
+      break;
   }
 }
 
@@ -255,6 +268,11 @@ function buildMap(rng: () => number): Tile[][] {
   // A vertical + horizontal path.
   for (let y = 6; y < MAP_H - 2; y++) m[y][7] = T.PATH;
   for (let x = 7; x < 26; x++) m[12][x] = T.PATH;
+  // The Hollow Shrine at the east end of the path (boss).
+  m[12][25] = T.SHRINE;
+  m[11][25] = T.FLOOR;
+  m[13][25] = T.FLOOR;
+  m[12][26] = T.FLOOR;
   // Sanctuary building (top-left): floor + walls + roof + a door gap.
   rect(m, 4, 3, 6, 4, T.FLOOR);
   for (let x = 4; x < 10; x++) {

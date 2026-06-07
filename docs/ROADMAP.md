@@ -42,10 +42,13 @@ The single most important phase. If this isn't fun, nothing else matters.
 - [x] **Leveling & Ascension** (XP from wins; evolve at thresholds, e.g. Ashling→Cindreaver→Pyrelich)
 - [x] **Mid-battle swap** (Q/E) with per-Wraith Vigor + forced swap on faint
 - [x] **Rarity tiers** (common→revenant→mythic) + **Aberrant** "shiny" variants; rarer = longer/harder Rite + weighted spawns
+- [x] **Curses** in combat (Sear/Drown/Static/Rime/Sap/Shatter/Unmaking) — attack the flick itself;
+      enemies inflict their element's curse on a Miss, scaled by rarity
+- [x] **Boss encounter** — the Hollow Shrine summons Voidmoth Mourne (mythic, Unmaking) for a mythic Rite
 - [ ] Swap programmer-art for real pixel-art tiles/sprites (needs assets — see ART_BIBLE.md §0)
-- [ ] Per-Wraith Strike sets + Curses in combat (telegraph behaviours beyond stats)
+- [ ] Per-Wraith Strike *sets* (distinct attack telegraph patterns beyond the shared director)
 - [ ] Conditional/world-event spawns (RARITY.md §4)
-- [ ] Short Story/Hunt with escalating telegraphs + a boss
+- [ ] A fuller Story/Hunt across the six domains
 
 **Gate:** a player will catch, build a team, and finish the intro Hunt — and want more.
 
