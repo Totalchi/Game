@@ -45,8 +45,9 @@ The single most important phase. If this isn't fun, nothing else matters.
 - [x] **Curses** in combat (Sear/Drown/Static/Rime/Sap/Shatter/Unmaking) — attack the flick itself;
       enemies inflict their element's curse on a Miss, scaled by rarity
 - [x] **Boss encounter** — the Hollow Shrine summons Voidmoth Mourne (mythic, Unmaking) for a mythic Rite
+- [x] **Per-Wraith attack patterns** — element archetypes (Aggressive/Control/Trickster/Wall/Stall/
+      Pressure/Unmaking) drive cadence, feints & splits, so each species fights with its own rhythm
 - [ ] Swap programmer-art for real pixel-art tiles/sprites (needs assets — see ART_BIBLE.md §0)
-- [ ] Per-Wraith Strike *sets* (distinct attack telegraph patterns beyond the shared director)
 - [ ] Conditional/world-event spawns (RARITY.md §4)
 - [ ] A fuller Story/Hunt across the six domains
 

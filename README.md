@@ -67,7 +67,9 @@ as they grow); **mid-battle swapping** (Q/E) with per-Wraith Vigor; **Curses** t
 Perfect window, Unmaking stops Wards fully negating…) inflicted by tougher foes; and **rarity** —
 most wilds are common, but **Revenants**, a **mythic** Voidmoth, and ultra-rare **Aberrant**
 ("shiny") variants lurk, each with a longer, harder Binding Rite. Walk the path east to the **Hollow
-Shrine** to face the boss. Skill catches them, never your wallet.
+Shrine** to face the boss. Every species fights with its **own rhythm** — an aggressive Ember
+double-hits, a Storm trickster feints and splits, a Stone wall hits slow and heavy. Skill catches
+them, never your wallet.
 
 > The overworld is intentionally chunky "programmer-art" — it proves the *format* (explore → encounter
 > → flick-battle → return). Real pixel-art tiles/sprites swap in later (see `docs/ART_BIBLE.md` §0).

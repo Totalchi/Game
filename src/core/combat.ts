@@ -4,6 +4,7 @@ import { damageMultiplier } from './typechart';
 import { makeRng, pick } from './rng';
 import { ELEMENTS } from './types';
 import { CURSES, type CurseId, type CurseDef } from './curses';
+import { DEFAULT_PROFILE, type AttackProfile } from './patterns';
 
 const RIME_PERFECT_MS = 90; // tightened window under the Rime curse
 const SEAR_EXTRA_AETHER = 14;
@@ -28,6 +29,8 @@ export interface CombatOptions {
   stats?: Partial<PlayerStats>;
   /** Enemy stats. */
   enemy?: Partial<EnemyStats>;
+  /** The enemy's attack pattern (per-Wraith rhythm). Defaults to a balanced profile. */
+  profile?: AttackProfile;
 }
 
 export interface PlayerStats {
@@ -98,6 +101,7 @@ export class Combat {
 
   private rng: () => number;
   private auto: boolean;
+  private profile: AttackProfile;
   private spawnCount = 0;
   private nextSpawnTick: number;
 
@@ -108,6 +112,7 @@ export class Combat {
     this.lastUpdate = now;
     this.rng = makeRng(opts.seed ?? 1);
     this.auto = opts.autoDirector ?? true;
+    this.profile = opts.profile ?? DEFAULT_PROFILE;
     this.nextSpawnTick = 2; // first attack lands a couple ticks in
 
     this.ps = defaultPlayerStats(opts.stats);
@@ -134,6 +139,11 @@ export class Combat {
   /** Max Aether for the active Wraith (renderer uses this for the bar). */
   get aetherMax(): number {
     return this.ps.aetherMax;
+  }
+
+  /** The enemy's attack-pattern name (for the HUD). */
+  get profileName(): string {
+    return this.profile.name;
   }
 
   // ---- curses ----
@@ -356,41 +366,28 @@ export class Combat {
     if (this.enemyCurse && this.rng() < this.enemyCurseChance) this.applyCurse(this.enemyCurse, now);
   }
 
-  // ---- encounter director (escalating telegraphs) ----
+  // ---- encounter director (per-Wraith profile, escalating intensity) ----
   private runDirector(now: number): void {
     const curTick = this.tickIndexAt(now);
     if (curTick < this.nextSpawnTick) return;
 
-    const stage = this.stage();
-    const lead = stage >= 3 ? 2 : 3; // ticks of wind-up
-    const spacing = [4, 3, 2, 2][Math.min(stage - 1, 3)];
+    const p = this.profile;
+    const inten = Math.min(1, this.spawnCount / 12); // ramps up over the fight
+    const spacing = Math.max(p.minSpacing, Math.round(p.baseSpacing - (p.baseSpacing - p.minSpacing) * inten));
+    const element = this.rng() < p.primaryBias ? p.elements[0] : pick(this.rng, p.elements);
+    const power = p.basePower * (0.8 + 0.5 * inten);
+    const feint = this.rng() < p.feintChance * inten;
+    const landing = curTick + p.lead;
 
-    const element = this.pickElement(stage);
-    const power = 10 + stage * 4;
+    this.addTelegraph({ element, landingTick: landing, power, feintFrom: feint ? this.pickDifferent(element) : undefined });
 
-    const feint = stage >= 4 && this.rng() < 0.35;
-    this.addTelegraph({
-      element,
-      landingTick: curTick + lead,
-      power,
-      feintFrom: feint ? this.pickDifferent(element) : undefined,
-    });
+    if (this.rng() < p.splitChance * inten) {
+      const e2 = this.rng() < 0.5 ? element : pick(this.rng, p.elements); // a second hit on the next tick
+      this.addTelegraph({ element: e2, landingTick: landing + 1, power });
+    }
 
     this.spawnCount++;
     this.nextSpawnTick = curTick + spacing;
-  }
-
-  private stage(): number {
-    if (this.spawnCount < 4) return 1; // single element, slow
-    if (this.spawnCount < 9) return 2; // mixed (3 elements)
-    if (this.spawnCount < 16) return 3; // all 6, faster
-    return 4; // + feints
-  }
-
-  private pickElement(stage: number): Element {
-    if (stage === 1) return 'ember';
-    if (stage === 2) return pick(this.rng, ['ember', 'tide', 'storm'] as const);
-    return pick(this.rng, ELEMENTS);
   }
 
   private pickDifferent(e: Element): Element {

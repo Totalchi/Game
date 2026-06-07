@@ -8,6 +8,7 @@ import { Audio } from './audio';
 import { SPECIES, STARTER_IDS, RARITY_COLOR, type Rarity } from '../data/species';
 import { makeMon, statsOf, gainXp, type Mon } from '../core/mon';
 import { ELEMENT_CURSE, type CurseId } from '../core/curses';
+import { profileFor } from '../core/patterns';
 import { ELEMENT_COLOR } from './colors';
 import { Overworld } from './overworld';
 import { loadRoster, saveRoster } from './save';
@@ -99,6 +100,7 @@ function startBattle(now: number, wildMon: Mon): void {
   wild = wildMon;
   const active = roster.active();
   const aStats = statsOf(active);
+  const wStats = statsOf(wildMon);
   battleActive = roster.activeIndex;
   teamVigor = roster.party.map((m) => statsOf(m).vigor); // full heal each encounter (demo)
   combat = new Combat(now, {
@@ -107,6 +109,7 @@ function startBattle(now: number, wildMon: Mon): void {
     autoDirector: true,
     stats: playerStats(active),
     enemy: enemyStats(wildMon),
+    profile: profileFor(wStats.element, wStats.signature?.id),
   });
   combat.playerVigor = teamVigor[battleActive];
   heldWards.clear();
@@ -342,6 +345,7 @@ function buildBattleInfo() {
     enemyElement: w.element,
     enemyRarity: w.aberrant ? 'aberrant' : w.rarity,
     enemyRarityColor: w.aberrant ? '#ff7ad9' : RARITY_COLOR[w.rarity],
+    enemyProfile: combat!.profileName,
     party,
   };
 }

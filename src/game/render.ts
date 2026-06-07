@@ -23,6 +23,7 @@ export interface RenderInfo {
   enemyElement: Element;
   enemyRarity?: string;
   enemyRarityColor?: string;
+  enemyProfile?: string;
   party: PartyPip[];
 }
 
@@ -71,7 +72,8 @@ function drawEnemy(ctx: CanvasRenderingContext2D, c: Combat, info: RenderInfo, W
   ctx.fillStyle = ELEMENT_COLOR[info.enemyElement];
   ctx.font = 'bold 20px ui-monospace, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(`${info.enemyName}  Lv${info.enemyLevel}  ${ELEMENT_GLYPH[info.enemyElement]} ${info.enemyElement}`, 24, 36);
+  const profile = info.enemyProfile ? `  ‹${info.enemyProfile}›` : '';
+  ctx.fillText(`${info.enemyName}  Lv${info.enemyLevel}  ${ELEMENT_GLYPH[info.enemyElement]} ${info.enemyElement}${profile}`, 24, 36);
   if (info.enemyRarity && info.enemyRarity !== 'common') {
     ctx.fillStyle = info.enemyRarityColor ?? '#fff';
     ctx.font = 'bold 13px ui-monospace, monospace';
