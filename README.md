@@ -71,6 +71,11 @@ Shrine** to face the boss. Every species fights with its **own rhythm** — an a
 double-hits, a Storm trickster feints and splits, a Stone wall hits slow and heavy. Skill catches
 them, never your wallet.
 
+**The Sanctuary:** walk into the building at the top-left to enter your home base. Spend **Beacon**
+(earned from binds & wins) to rebuild five structures — the Aether Font, Whetstone, Archive,
+Knell-Shrine, and the **Hearth**, whose rising tier visibly *lifts the Long Dusk*. Perks boost your
+Wraiths' economy and power (PvE), never your timing — skill stays sacred.
+
 > The overworld is intentionally chunky "programmer-art" — it proves the *format* (explore → encounter
 > → flick-battle → return). Real pixel-art tiles/sprites swap in later (see `docs/ART_BIBLE.md` §0).
 

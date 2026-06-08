@@ -47,6 +47,9 @@ The single most important phase. If this isn't fun, nothing else matters.
 - [x] **Boss encounter** — the Hollow Shrine summons Voidmoth Mourne (mythic, Unmaking) for a mythic Rite
 - [x] **Per-Wraith attack patterns** — element archetypes (Aggressive/Control/Trickster/Wall/Stall/
       Pressure/Unmaking) drive cadence, feints & splits, so each species fights with its own rhythm
+- [x] **The Sanctuary (base building)** — earn Beacon from binds/wins; restore 5 structures
+      (Hearth/Aether Font/Whetstone/Archive/Knell-Shrine) for economy/PvE perks; the world visibly
+      "lifts" as the Hearth tier rises (the soul + retention loop from PROGRESSION.md)
 - [ ] Swap programmer-art for real pixel-art tiles/sprites (needs assets — see ART_BIBLE.md §0)
 - [ ] Conditional/world-event spawns (RARITY.md §4)
 - [ ] A fuller Story/Hunt across the six domains

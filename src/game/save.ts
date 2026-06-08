@@ -1,21 +1,31 @@
 import { Roster, type RosterState } from '../core/roster';
+import { Sanctuary, type SanctuaryState } from '../core/sanctuary';
 
-const KEY = 'wardbound.save.v1';
+const KEY = 'wardbound.save.v2';
 
-/** Load the saved Roster, or a fresh empty one. Browser-only (localStorage). */
-export function loadRoster(): Roster {
+export interface GameSave {
+  roster: RosterState;
+  sanctuary: SanctuaryState;
+}
+
+/** Load the saved game, or fresh empty objects. Browser-only (localStorage). */
+export function loadGame(): { roster: Roster; sanctuary: Sanctuary } {
   try {
     const s = localStorage.getItem(KEY);
-    if (s) return Roster.from(JSON.parse(s) as RosterState);
+    if (s) {
+      const data = JSON.parse(s) as GameSave;
+      return { roster: Roster.from(data.roster), sanctuary: Sanctuary.from(data.sanctuary) };
+    }
   } catch {
     /* ignore corrupt/absent save */
   }
-  return new Roster();
+  return { roster: new Roster(), sanctuary: new Sanctuary() };
 }
 
-export function saveRoster(r: Roster): void {
+export function saveGame(roster: Roster, sanctuary: Sanctuary): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(r.toJSON()));
+    const data: GameSave = { roster: roster.toJSON(), sanctuary: sanctuary.toJSON() };
+    localStorage.setItem(KEY, JSON.stringify(data));
   } catch {
     /* storage may be unavailable; non-fatal */
   }

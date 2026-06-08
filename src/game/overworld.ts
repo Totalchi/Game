@@ -48,6 +48,7 @@ export class Overworld {
   private stepsSinceEncounter = 0;
   pendingEncounter: Mon | null = null;
   pendingBoss = false;
+  pendingSanctuary = false;
 
   constructor(seed = 5) {
     const rng = makeRng(seed);
@@ -109,6 +110,10 @@ export class Overworld {
     this.stepsSinceEncounter++;
     if (this.map[this.ty][this.tx] === T.SHRINE) {
       this.pendingBoss = true;
+      return;
+    }
+    if (this.map[this.ty][this.tx] === T.FLOOR) {
+      this.pendingSanctuary = true;
       return;
     }
     if (this.map[this.ty][this.tx] === T.TALL && this.stepsSinceEncounter > 2) {
