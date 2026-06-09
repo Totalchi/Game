@@ -65,12 +65,16 @@ The single most important phase. If this isn't fun, nothing else matters.
 
 **Gate:** a player will catch, build a team, and finish the intro Hunt — and want more.
 
-## Phase 3 — Retention & Skill Content
-- [ ] Trials (endless skill gauntlet) + local leaderboards
-- [ ] Daily Ward (seeded daily puzzle)
-- [ ] Practice/metronome trainer
+## Phase 3 — Retention & Skill Content  🟢 STARTED
+- [x] Trials (endless skill gauntlet) + local best scores
+- [x] Daily Ward (date-seeded daily gauntlet)
+- [x] Practice/metronome trainer (slow 800ms Knell, harmless enemy — P key)
+- [x] Game-feel pass: particles, screenshake, flashes, hit audio (cosmetic only)
+- [x] Touch/mobile-web controls (tap-to-flick, hold-to-walk, tap menus)
+- [x] Mute toggle (M); colorblind-safe glyphs were in from day one
 - [ ] Replays + one-click clip export (viral loop)
-- [ ] Accessibility pass (colorblind palette, cue options, tick-speed in casual)
+- [ ] Online leaderboards (needs backend — Phase 4)
+- [ ] Fuller accessibility pass (cue options, remapping)
 
 **Gate:** D1/D7 retention signal good enough to invest in backend + monetization.
 

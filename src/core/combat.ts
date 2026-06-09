@@ -299,7 +299,7 @@ export class Combat {
     }
 
     // Cleanup.
-    this.telegraphs = this.telegraphs.filter((t) => !t.resolved || now - this.timeOfTick(t.landingTick) < 700);
+    this.telegraphs = this.telegraphs.filter((t) => !t.resolved || now - this.timeOfTick(t.landingTick) < this.tickMs + 100);
     this.floats = this.floats.filter((f) => now - f.bornAt < 900);
     this.pruneIntervals(now);
 

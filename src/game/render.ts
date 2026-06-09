@@ -182,27 +182,36 @@ function drawBars(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number
   bar(ctx, rx, y, (W - 72) / 2, 16, c.resolve / c.resolveMax, ready ? '#ff7ad9' : '#9a5bb0', `RESOLVE ${Math.round(c.resolve)}${ready ? '  [SPACE = STRIKE]' : ''}`);
 }
 
-function drawWards(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
-  const y = H - 96;
+/** Shared Ward-button geometry — drawing and touch hit-testing must always agree. */
+export function wardRect(i: number, W: number, H: number): { x: number; y: number; w: number; h: number } {
   const n = ELEMENTS.length;
   const gap = 10;
-  const bw = (W - 48 - gap * (n - 1)) / n;
+  const w = (W - 48 - gap * (n - 1)) / n;
+  return { x: 24 + i * (w + gap), y: H - 96, w, h: 54 };
+}
+
+/** Shared Strike (Resolve bar) geometry — drawing and touch hit-testing must always agree. */
+export function strikeRect(W: number, H: number): { x: number; y: number; w: number; h: number } {
+  return { x: 24 + (W - 72) / 2 + 24, y: H - 150, w: (W - 72) / 2, h: 40 };
+}
+
+function drawWards(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
   ELEMENTS.forEach((el, i) => {
-    const x = 24 + i * (bw + gap);
+    const r = wardRect(i, W, H);
     const up = c.activeElement === el;
     ctx.fillStyle = up ? ELEMENT_COLOR[el] : '#1b1b27';
-    ctx.fillRect(x, y, bw, 54);
+    ctx.fillRect(r.x, r.y, r.w, r.h);
     ctx.strokeStyle = ELEMENT_COLOR[el];
     ctx.lineWidth = up ? 3 : 1;
-    ctx.strokeRect(x, y, bw, 54);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
     ctx.lineWidth = 1;
     ctx.fillStyle = up ? '#0c0b10' : ELEMENT_COLOR[el];
     ctx.font = 'bold 20px ui-monospace, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(ELEMENT_GLYPH[el], x + bw / 2, y + 26);
+    ctx.fillText(ELEMENT_GLYPH[el], r.x + r.w / 2, r.y + 26);
     ctx.fillStyle = up ? '#0c0b10' : '#9a9aa8';
     ctx.font = '10px ui-monospace, monospace';
-    ctx.fillText(`${i + 1} ${el}`, x + bw / 2, y + 44);
+    ctx.fillText(`${i + 1} ${el}`, r.x + r.w / 2, r.y + 44);
   });
 }
 

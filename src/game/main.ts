@@ -3,7 +3,7 @@ import { Combat, type PlayerStats } from '../core/combat';
 import { CFG } from '../core/config';
 import { BindingRite } from '../core/binding';
 import { ELEMENTS } from '../core/types';
-import { render, renderRite, type PartyPip } from './render';
+import { render, renderRite, wardRect, strikeRect, type PartyPip } from './render';
 import { Audio } from './audio';
 import { SPECIES, STARTER_IDS, RARITY_COLOR, type Rarity } from '../data/species';
 import { makeMon, statsOf, gainXp, type Mon } from '../core/mon';
@@ -434,17 +434,11 @@ function canvasPos(e: PointerEvent): [number, number] {
   return [((e.clientX - r.left) / r.width) * canvas.width, ((e.clientY - r.top) / r.height) * canvas.height];
 }
 
-/** Mirror of drawWards() geometry: which Ward button sits at (x, y)? */
+/** Which Ward button sits at (x, y)? Uses the same geometry the renderer draws with. */
 function wardIndexAt(x: number, y: number): number | null {
-  const W = canvas.width;
-  const H = canvas.height;
-  const gap = 10;
-  const bw = (W - 48 - gap * 5) / 6;
-  const y0 = H - 96;
-  if (y < y0 || y > y0 + 54) return null;
   for (let i = 0; i < ELEMENTS.length; i++) {
-    const bx = 24 + i * (bw + gap);
-    if (x >= bx && x <= bx + bw) return i;
+    const r = wardRect(i, canvas.width, canvas.height);
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
   }
   return null;
 }
@@ -539,8 +533,9 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
   // Tap the Resolve bar to Strike (battle only).
-  if (scene === 'battle' && combat && y >= canvas.height - 150 && y <= canvas.height - 110 && x >= 462) {
-    combat.strike(now);
+  if (scene === 'battle' && combat) {
+    const r = strikeRect(canvas.width, canvas.height);
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) combat.strike(now);
   }
 });
 
