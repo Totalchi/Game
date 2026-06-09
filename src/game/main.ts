@@ -13,6 +13,7 @@ import { ELEMENT_COLOR } from './colors';
 import { Overworld } from './overworld';
 import { loadGame, saveGame } from './save';
 import { STRUCTURES, TIER_FLAVOUR } from '../core/sanctuary';
+import { SKILL_NODES, BRANCH_COLOR, SkillTree } from '../core/skilltree';
 
 const KEY_TO_INDEX: Record<string, number> = { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5 };
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd']);
@@ -29,7 +30,7 @@ ctx.imageSmoothingEnabled = false;
 
 const audio = new Audio();
 
-type Scene = 'title' | 'overworld' | 'battle' | 'rite' | 'sanctuary';
+type Scene = 'title' | 'overworld' | 'battle' | 'rite' | 'sanctuary' | 'skilltree';
 let scene: Scene = 'title';
 let sanctSel = 0;
 let overworld: Overworld | null = null;
@@ -48,9 +49,14 @@ const heldWards = new Set<string>();
 const game = loadGame();
 let roster = game.roster;
 let sanctuary = game.sanctuary;
+let skills = game.skills;
+let skillSel = 0;
 if (!roster.isEmpty()) {
   overworld = new Overworld();
   scene = 'overworld';
+}
+function persist(): void {
+  saveGame(roster, sanctuary, skills);
 }
 
 // ---------- stat helpers ----------
@@ -59,10 +65,14 @@ function playerStats(mon: Mon): Partial<PlayerStats> {
   const sig = s.signature;
   return {
     vigor: s.vigor,
-    aetherMax: s.aether + sanctuary.bonusAether(), // Aether Font (Sanctuary)
-    aetherRegenPerMs: CFG.aetherRegenPerMs * (sig?.aetherRegenMult ?? 1),
-    strikePower: s.power * (sig?.strikePowerMult ?? 1) * sanctuary.powerMult(), // Whetstone
-    bonusResolveOnPerfect: sig?.bonusResolveOnPerfect ?? 0,
+    aetherMax: s.aether + sanctuary.bonusAether() + skills.maxAetherBonus(), // Aether Font + Deep Well
+    aetherRegenPerMs: CFG.aetherRegenPerMs * (sig?.aetherRegenMult ?? 1) * skills.aetherRegenMult(),
+    aetherDrainPerMs: CFG.aetherDrainPerMs * skills.drainMult(), // Eternal Flame
+    strikePower: s.power * (sig?.strikePowerMult ?? 1) * sanctuary.powerMult() * skills.strikePowerMult(),
+    bonusResolveOnPerfect: (sig?.bonusResolveOnPerfect ?? 0) + skills.bonusResolve(), // Riposte
+    resolveMax: CFG.resolveMax + skills.resolveCapBonus(), // Deep Reserve
+    momentumMult: skills.momentumMult(), // Momentum Break
+    curseDurMult: skills.curseDurMult(), // Calm Mind / Unbroken
   };
 }
 
@@ -129,7 +139,7 @@ function swapTo(idx: number, now: number, forced: boolean): void {
   const m = roster.party[idx];
   const s = statsOf(m);
   combat.setActive(playerStats(m), s.element, teamVigor[idx], now);
-  if (!forced) combat.aether = Math.max(0, combat.aether - SWAP_AETHER_COST);
+  if (!forced) combat.aether = Math.max(0, combat.aether - SWAP_AETHER_COST * skills.swapCostMult()); // Light Step
   audio.flick();
 }
 
@@ -144,18 +154,20 @@ function aliveInDirection(dir: 1 | -1): number {
 
 function applyWinXp(): void {
   const aMon = roster.party[battleActive];
-  const gain = Math.round((8 + statsOf(wild).level * 3) * sanctuary.xpMult()); // Archive
+  const wRarity = statsOf(wild).rarity;
+  const gain = Math.round((8 + statsOf(wild).level * 3) * sanctuary.xpMult() * skills.xpMult()); // Archive + Scholar
   const res = gainXp(aMon, gain);
   if (res.ascended) levelMsg = `${res.ascended.fromName} ascended into ${res.ascended.toName}!`;
   else if (res.leveledTo.length) levelMsg = `${statsOf(aMon).name} reached Lv${aMon.level}!`;
-  sanctuary.addBeacon(6 * sanctuary.beaconMult()); // Beacon for the win
-  saveGame(roster, sanctuary);
+  sanctuary.addBeacon(6 * sanctuary.beaconMult() * skills.beaconMult()); // Beacon for the win
+  skills.addInsight(wRarity === 'mythic' ? 5 : wRarity === 'revenant' ? 3 : 1); // Insight from battle
+  persist();
 }
 
 function startRite(now: number): void {
   const s = statsOf(wild);
   const p = riteFor(s.rarity);
-  rite = new BindingRite(now, { element: s.element, seed: Math.floor(now) % 9999, count: p.count, threshold: p.threshold });
+  rite = new BindingRite(now, { element: s.element, seed: Math.floor(now) % 9999, count: p.count, threshold: p.threshold, startBonus: skills.bindStart() });
   riteResolved = false;
   heldWards.clear();
   lastTick = -1;
@@ -174,7 +186,7 @@ window.addEventListener('keydown', (e) => {
   if (scene === 'title') {
     if (e.key === '1' || e.key === '2' || e.key === '3') {
       roster.addCatch(makeMon(STARTERS[Number(e.key) - 1].id, 5));
-      saveGame(roster, sanctuary);
+      persist();
       overworld = new Overworld();
       scene = 'overworld';
     }
@@ -186,7 +198,23 @@ window.addEventListener('keydown', (e) => {
     else if (e.key === 'Tab') {
       e.preventDefault();
       roster.cycle();
-      saveGame(roster, sanctuary);
+      persist();
+    } else if (e.key === 'k' || e.key === 'K') {
+      skillSel = 0;
+      scene = 'skilltree';
+      rawKeys.clear();
+    }
+    return;
+  }
+
+  if (scene === 'skilltree') {
+    if (e.key === 'ArrowUp' || e.key === 'w') skillSel = (skillSel - 1 + SKILL_NODES.length) % SKILL_NODES.length;
+    else if (e.key === 'ArrowDown' || e.key === 's') skillSel = (skillSel + 1) % SKILL_NODES.length;
+    else if (e.key === 'Enter' || e.key === ' ') {
+      if (skills.buy(SKILL_NODES[skillSel].id)) persist();
+    } else if (e.key === 'Escape' || e.key === 'k' || e.key === 'K') {
+      scene = 'overworld';
+      rawKeys.clear();
     }
     return;
   }
@@ -195,7 +223,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowUp' || e.key === 'w') sanctSel = (sanctSel - 1 + STRUCTURES.length) % STRUCTURES.length;
     else if (e.key === 'ArrowDown' || e.key === 's') sanctSel = (sanctSel + 1) % STRUCTURES.length;
     else if (e.key === 'Enter' || e.key === ' ') {
-      if (sanctuary.upgrade(STRUCTURES[sanctSel].id)) saveGame(roster, sanctuary);
+      if (sanctuary.upgrade(STRUCTURES[sanctSel].id)) persist();
     } else if (e.key === 'Escape' || e.key === 'b' || e.key === 'B') {
       scene = 'overworld';
       rawKeys.clear();
@@ -322,17 +350,17 @@ function wrapText(c: CanvasRenderingContext2D, text: string, cx: number, y: numb
   c.fillText(line, cx, yy);
 }
 
-function drawOverworldHud(): void {
+function drawOverworldHud(stutter: boolean): void {
   const W = canvas.width;
   ctx.fillStyle = 'rgba(8,8,12,0.72)';
   ctx.fillRect(0, 0, W, 30);
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#ffd54a';
+  ctx.fillStyle = stutter ? '#c77dff' : '#ffd54a';
   ctx.font = 'bold 14px ui-monospace, monospace';
-  ctx.fillText('The Cinderwaste', 12, 20);
+  ctx.fillText(stutter ? 'The Cinderwaste · ✦ KNELL STUTTER' : 'The Cinderwaste', 12, 20);
 
   ctx.font = '12px ui-monospace, monospace';
-  let x = 190;
+  let x = 320;
   for (const p of roster.partyLabels()) {
     ctx.fillStyle = p.active ? ELEMENT_COLOR[p.element] : '#6a6a78';
     const label = p.active ? `▸${p.name}` : p.name;
@@ -342,9 +370,9 @@ function drawOverworldHud(): void {
 
   ctx.textAlign = 'right';
   ctx.fillStyle = '#ffd54a';
-  ctx.fillText(`◆ ${sanctuary.beacon} Beacon`, W - 12, 14);
+  ctx.fillText(`◆ ${sanctuary.beacon}   ✸ ${skills.insight}`, W - 12, 14);
   ctx.fillStyle = '#7a7a8a';
-  ctx.fillText(`Dex ${roster.speciesCount()} · enter the Sanctuary (top-left) to build`, W - 12, 26);
+  ctx.fillText('Sanctuary: top-left · K: Skill Tree · Tab: switch', W - 12, 26);
 }
 
 function drawSanctuary(): void {
@@ -415,6 +443,75 @@ function drawSanctuary(): void {
   ctx.fillText('↑/↓ select   ·   ENTER upgrade   ·   ESC / B  leave', W / 2, H - 24);
 }
 
+function drawSkillTree(): void {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.fillStyle = '#0c0b12';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd54a';
+  ctx.font = 'bold 26px ui-monospace, monospace';
+  ctx.fillText('THE WARDING TREE', W / 2, 40);
+  const total = SkillTree.totalToComplete();
+  ctx.fillStyle = '#cfd2e0';
+  ctx.font = '13px ui-monospace, monospace';
+  ctx.fillText(`✸ ${skills.insight} Insight   ·   completed ${Math.round((skills.spent() / total) * 100)}%  (${skills.spent()} / ${total})`, W / 2, 62);
+
+  const x = 40;
+  let y = 80;
+  const rowH = 31;
+  const rowW = W - 80;
+  SKILL_NODES.forEach((n, i) => {
+    const rank = skills.rankOf(n.id);
+    const sel = i === skillSel;
+    const locked = !skills.prereqMet(n.id);
+    ctx.fillStyle = sel ? '#1c1c2a' : '#121220';
+    ctx.fillRect(x, y, rowW, rowH - 4);
+    if (sel) {
+      ctx.strokeStyle = BRANCH_COLOR[n.branch];
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, rowW, rowH - 4);
+      ctx.lineWidth = 1;
+    }
+    // branch dot
+    ctx.fillStyle = BRANCH_COLOR[n.branch];
+    ctx.fillRect(x + 8, y + 8, 10, 10);
+    // name
+    ctx.textAlign = 'left';
+    ctx.fillStyle = locked ? '#5a5a66' : '#e8e8f0';
+    ctx.font = 'bold 13px ui-monospace, monospace';
+    ctx.fillText(n.name, x + 26, y + 18);
+    // rank dots
+    let dots = '';
+    for (let d = 0; d < n.maxRank; d++) dots += d < rank ? '▰' : '▱';
+    ctx.fillStyle = BRANCH_COLOR[n.branch];
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.fillText(dots, x + 200, y + 18);
+    // desc
+    ctx.fillStyle = '#8a8a98';
+    ctx.fillText(n.desc, x + 290, y + 18);
+    // right status
+    ctx.textAlign = 'right';
+    if (skills.isMaxed(n.id)) {
+      ctx.fillStyle = '#6fcf57';
+      ctx.fillText('MAX', x + rowW - 12, y + 18);
+    } else if (locked) {
+      ctx.fillStyle = '#7a5a3a';
+      ctx.fillText('LOCKED', x + rowW - 12, y + 18);
+    } else {
+      ctx.fillStyle = skills.canBuy(n.id) ? '#ffd54a' : '#7a6a3a';
+      ctx.fillText(`✸ ${skills.costOf(n.id)}`, x + rowW - 12, y + 18);
+    }
+    y += rowH;
+  });
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#7a7a8a';
+  ctx.font = '12px ui-monospace, monospace';
+  ctx.fillText('↑/↓ select   ·   ENTER learn   ·   ESC / K  leave   ·   earn Insight by battling & binding', W / 2, H - 16);
+}
+
 function buildBattleInfo() {
   const a = statsOf(roster.party[battleActive]);
   const w = statsOf(wild);
@@ -444,9 +541,10 @@ function loop(): void {
   if (scene === 'title') {
     drawTitle();
   } else if (scene === 'overworld' && overworld) {
+    overworld.encounterLuck = skills.rareLuck() + sanctuary.lure();
     overworld.update(now, rawKeys);
     overworld.render(ctx, now);
-    drawOverworldHud();
+    drawOverworldHud(overworld.stutterActive(now));
     if (overworld.pendingSanctuary) {
       overworld.pendingSanctuary = false;
       sanctSel = 0;
@@ -462,6 +560,8 @@ function loop(): void {
     }
   } else if (scene === 'sanctuary') {
     drawSanctuary();
+  } else if (scene === 'skilltree') {
+    drawSkillTree();
   } else if (scene === 'battle' && combat) {
     const before = combat.perfects;
     combat.update(now);
@@ -497,8 +597,9 @@ function loop(): void {
       riteResolved = true;
       if (rite.bound) {
         const isNew = roster.addCatch(wild);
-        sanctuary.addBeacon(12 * sanctuary.beaconMult()); // Beacon for binding
-        saveGame(roster, sanctuary);
+        sanctuary.addBeacon(12 * sanctuary.beaconMult() * skills.beaconMult()); // Beacon for binding
+        skills.addInsight(2); // Insight for binding
+        persist();
         if (isNew) levelMsg = (levelMsg ? levelMsg + '  ·  ' : '') + 'New species for the Dex!';
       }
     }

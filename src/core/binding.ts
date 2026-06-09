@@ -8,6 +8,7 @@ export interface BindingOptions {
   seed?: number;
   count?: number; // number of strikes in the rite (rarer = more)
   threshold?: number; // Bind meter needed to catch (rarer = higher)
+  startBonus?: number; // starting Bind meter bonus (Practised Bind skill)
 }
 
 /**
@@ -22,7 +23,7 @@ export class BindingRite {
   readonly total: number;
   readonly threshold: number;
 
-  bindMeter = 20; // a little starting goodwill
+  bindMeter: number;
   finished = false;
   bound = false;
 
@@ -33,6 +34,7 @@ export class BindingRite {
     this.combat.playerVigor = 1e9; // you cannot die during a Rite
     this.total = opts.count ?? 5;
     this.threshold = opts.threshold ?? 65;
+    this.bindMeter = Math.min(100, 20 + (opts.startBonus ?? 0)); // 20 goodwill + Practised Bind
 
     const startTick = 3;
     const spacing = 2; // tight cadence

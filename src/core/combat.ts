@@ -37,8 +37,12 @@ export interface PlayerStats {
   vigor: number;
   aetherMax: number;
   aetherRegenPerMs: number;
+  aetherDrainPerMs: number;
   strikePower: number;
   bonusResolveOnPerfect: number;
+  resolveMax: number;
+  momentumMult: number; // scales incoming Momentum damage (skill/Warding perks)
+  curseDurMult: number; // scales how long curses last on you
 }
 
 export interface EnemyStats {
@@ -53,8 +57,12 @@ function defaultPlayerStats(p?: Partial<PlayerStats>): PlayerStats {
     vigor: p?.vigor ?? CFG.playerVigor,
     aetherMax: p?.aetherMax ?? CFG.aetherMax,
     aetherRegenPerMs: p?.aetherRegenPerMs ?? CFG.aetherRegenPerMs,
+    aetherDrainPerMs: p?.aetherDrainPerMs ?? CFG.aetherDrainPerMs,
     strikePower: p?.strikePower ?? CFG.strikePower,
     bonusResolveOnPerfect: p?.bonusResolveOnPerfect ?? 0,
+    resolveMax: p?.resolveMax ?? CFG.resolveMax,
+    momentumMult: p?.momentumMult ?? 1,
+    curseDurMult: p?.curseDurMult ?? 1,
   };
 }
 
@@ -151,7 +159,7 @@ export class Combat {
     const def = CURSES[id];
     const e = this.curses.get(id);
     this.curses.set(id, {
-      until: now + def.durationMs,
+      until: now + def.durationMs * this.ps.curseDurMult, // Warding perks shorten curses
       charges: def.kind === 'charge' ? (e?.charges ?? 0) + 1 : 0,
     });
     this.float(`✦${def.short}`, 'info', now);
@@ -259,7 +267,7 @@ export class Combat {
     // Aether economy.
     if (this.activeElement) {
       const drainMult = this.hasCurse('drown', now) ? 1.6 : 1; // Drown: faster drain
-      this.aether = Math.max(0, this.aether - dt * CFG.aetherDrainPerMs * drainMult);
+      this.aether = Math.max(0, this.aether - dt * this.ps.aetherDrainPerMs * drainMult);
       if (this.aether <= 0) this.dropWard(now); // burned out — Ward collapses
     } else {
       this.aether = Math.min(this.ps.aetherMax, this.aether + dt * this.ps.aetherRegenPerMs);
@@ -328,10 +336,10 @@ export class Combat {
   private applyGrade(grade: Grade, t: Telegraph, now: number): void {
     const bonus = grade === 'perfect' ? this.ps.bonusResolveOnPerfect : 0;
     const sap = this.hasCurse('sap', now) ? 0.5 : 1; // Sap: less Resolve
-    this.resolve = Math.min(CFG.resolveMax, this.resolve + (CFG.resolveGain[grade] + bonus) * sap);
+    this.resolve = Math.min(this.ps.resolveMax, this.resolve + (CFG.resolveGain[grade] + bonus) * sap);
 
     const mult = damageMultiplier(t.element, this.playerElement);
-    const dmg = t.power * mult * (1 + this.momentum * CFG.momentumDamagePerStack) * this.enemyPowerMult;
+    const dmg = t.power * mult * (1 + this.momentum * CFG.momentumDamagePerStack * this.ps.momentumMult) * this.enemyPowerMult;
 
     if (grade === 'miss') {
       let d = dmg;

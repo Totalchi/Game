@@ -50,6 +50,12 @@ export class Overworld {
   pendingBoss = false;
   pendingSanctuary = false;
 
+  /** Rare-spawn luck supplied by main (skills + Sanctuary). */
+  encounterLuck = 0;
+  /** Knell Stutter world-event: rare spawns surge while active. */
+  private nextStutterAt = -1;
+  stutterUntil = 0;
+
   constructor(seed = 5) {
     const rng = makeRng(seed);
     this.map = buildMap(rng);
@@ -65,7 +71,20 @@ export class Overworld {
     return WALKABLE.has(this.map[ty][tx]);
   }
 
+  stutterActive(now: number): boolean {
+    return now < this.stutterUntil;
+  }
+
+  private tickStutter(now: number): void {
+    if (this.nextStutterAt < 0) this.nextStutterAt = now + 30000; // first stutter ~30s in
+    if (now >= this.nextStutterAt && now >= this.stutterUntil) {
+      this.stutterUntil = now + 12000; // lasts 12s
+      this.nextStutterAt = now + 45000 + Math.floor(makeRng(Math.floor(now))() * 25000);
+    }
+  }
+
   update(now: number, held: Set<string>): void {
+    this.tickStutter(now);
     if (!this.moving) {
       let dx = 0;
       let dy = 0;
@@ -121,7 +140,8 @@ export class Overworld {
       const r = makeRng(Math.floor(now) ^ (this.tx * 73856093) ^ (this.ty * 19349663))();
       if (r < 0.14) {
         this.stepsSinceEncounter = 0;
-        this.pendingEncounter = rollWild(Math.floor(now) ^ (this.tx * 2654435761) ^ this.ty);
+        const luck = this.encounterLuck + (this.stutterActive(now) ? 8 : 0);
+        this.pendingEncounter = rollWild(Math.floor(now) ^ (this.tx * 2654435761) ^ this.ty, luck);
       }
     }
   }

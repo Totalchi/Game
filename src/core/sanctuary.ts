@@ -19,6 +19,7 @@ export const STRUCTURES: StructureDef[] = [
   { id: 'whetstone', name: 'Whetstone', desc: '+6% Strike power per level.', maxLevel: 5, baseCost: 12, costMult: 1.6 },
   { id: 'archive', name: 'The Archive', desc: '+12% XP from battles per level.', maxLevel: 5, baseCost: 10, costMult: 1.55 },
   { id: 'knellshrine', name: 'Knell-Shrine', desc: '+15% Beacon income per level.', maxLevel: 5, baseCost: 10, costMult: 1.6 },
+  { id: 'aviary', name: 'The Aviary', desc: '+2 rare-spawn luck per level.', maxLevel: 5, baseCost: 12, costMult: 1.6 },
 ];
 
 const BY_ID = new Map(STRUCTURES.map((s) => [s.id, s]));
@@ -83,6 +84,9 @@ export class Sanctuary {
   }
   beaconMult(): number {
     return 1 + this.levelOf('knellshrine') * 0.15;
+  }
+  lure(): number {
+    return this.levelOf('aviary') * 2;
   }
   /** Sanctuary tier = Hearth level; drives the world-healing flavour. */
   tier(): number {

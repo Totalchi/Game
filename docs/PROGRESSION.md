@@ -5,6 +5,55 @@
 > return every day**, while obeying our #1 pillar: **the flick is sacred — progression never buys you
 > better timing or pay-to-win power.**
 
+---
+
+## ⭐ IMPLEMENTED v1 — Skill Tree & Homebase (what's actually in the game)
+
+### The Warding Tree (skill tree) — *"a degelijk lange grind"*
+You earn **Insight** slowly (battle win **+1**, Revenant **+3**, mythic boss **+5**, each bind **+2**)
+and spend it across **4 branches / 16 nodes**, most with **5 ranks** and **rising cost** (rank *r*
+costs `baseCost × (r+1)`). Completing everything needs **≈ 650 Insight ≈ 200+ encounters** — a genuine
+long-haul grind, on purpose. Every node is economy/utility/access — **never timing** (skill purity).
+
+| Branch | Nodes (rank-by-rank perks) |
+| --- | --- |
+| 🟦 **Conservation** | *Steady Breath* (+8% Aether regen), *Deep Well* (+5 max Aether), *Light Step* (−12% swap cost), *Eternal Flame* (capstone: Wards drain −15%) |
+| 🟪 **Resolve** | *Riposte* (+2 Resolve/Perfect), *Honed Edge* (+4% Strike), *Deep Reserve* (+10 Resolve cap), *Overflow* (capstone: +15% Strike) |
+| 🟨 **Hunter** | *Keen Eye* (+rare-spawn luck), *Warden's Tithe* (+8% Beacon), *Scholar* (+8% XP), *Practised Bind* (+6 starting Bind meter), *Fortune's Favour* (capstone: +6 luck) |
+| 🟩 **Warding** | *Calm Mind* (−8% curse duration), *Momentum Break* (−12% Momentum dmg), *Unbroken* (capstone: −20% curse duration) |
+
+Prereqs gate the tree (e.g. *Deep Well* needs *Steady Breath* rank 2; capstones need their branch
+maxed), so it reads as a real tree with build choices. Open it with **K** in the overworld.
+**Future expansion** (keeps the grind growing): per-element Affinity sub-trees and per-Wraith "Pacts"
+(GDD §3B/PROGRESSION §3B/C) — each a fresh tree on top of this one, so "100%" keeps moving with seasons.
+
+### The Sanctuary (homebase upgrades) — *"hoe doen we de homebase?"*
+Walk into the building (top-left) to enter your base. You spend **Beacon** (bind **+12**, win **+6**,
+scaled by Knell-Shrine & skills) on structures with **rising cost** (`baseCost × costMult^level`). Each
+gives a tangible **economy/PvE** perk; the **Hearth** tier visibly *lifts the Long Dusk* (the screen
+brightens, flavour text advances) — progress you can *see*, which is the core retention + soul hook.
+
+| Structure | Perk (per level, max 5) |
+| --- | --- |
+| **The Hearth** | Sanctuary tier — lifts the dusk (soul/visual; gates the fantasy of healing Vael) |
+| **Aether Font** | +6 max Aether in battle |
+| **Whetstone** | +6% Strike power |
+| **The Archive** | +12% XP |
+| **Knell-Shrine** | +15% Beacon income |
+| **The Aviary** | +2 rare-spawn luck |
+
+**How upgrades work / scale:** costs grow geometrically so each structure is its own mini-grind; perks
+stack multiplicatively with skill-tree perks (e.g. Whetstone ×1.30 × Honed Edge ×1.20 strike power), so
+a maxed Warden is meaningfully stronger in PvE without ever touching the flick window. **Future
+structures** (the design runway): Domain Habitats ×6 (passive Beacon + house bound Wraiths per element),
+the Trial Hall (unlocks Trials/Daily), the Forge (cosmetics), the Reliquary (Insight income) — and
+higher Hearth tiers that physically rebuild the town art. See §1 below for the full vision.
+
+### World events — the rare-spawn chase
+**Knell Stutters** now fire periodically in the overworld (HUD shows *✦ KNELL STUTTER*): for ~12s rare
+spawns surge (a big luck boost on top of Keen Eye/Aviary), driving the *"log in / keep hunting"* loop.
+Roadmap: Eclipses & Domain Storms (RARITY.md §4).
+
 ## 0. The golden rule (how we keep retention AND skill purity)
 
 Progression in WARDBOUND grants four things — and *never* the fifth:
