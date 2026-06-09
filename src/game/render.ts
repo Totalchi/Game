@@ -4,8 +4,6 @@ import { CFG } from '../core/config';
 import { ELEMENTS, type Element } from '../core/types';
 import { ELEMENT_COLOR, ELEMENT_GLYPH, GRADE_COLOR } from './colors';
 
-const LANE_LEAD_MS = 3 * CFG.tickMs; // how far ahead the lane shows incoming attacks
-
 export interface PartyPip {
   name: string;
   element: Element;
@@ -108,7 +106,7 @@ function drawLane(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: numb
   const laneH = 90;
   const nowX = W - 120; // the NOW line, where attacks land
   const left = 40;
-  const lead = c.hasCurse('static', now) ? 2 * CFG.tickMs : LANE_LEAD_MS; // Static: less lead time
+  const lead = c.hasCurse('static', now) ? 2 * c.tickMs : 3 * c.tickMs; // Static: less lead time
 
   // Lane backdrop + NOW line.
   ctx.fillStyle = '#101019';
@@ -181,7 +179,7 @@ function drawBars(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number
   bar(ctx, 24, y, (W - 72) / 2, 16, c.aether / c.aetherMax, '#48c0ff', `AETHER ${Math.round(c.aether)}`);
   const rx = 24 + (W - 72) / 2 + 24;
   const ready = c.resolve >= CFG.strikeCost;
-  bar(ctx, rx, y, (W - 72) / 2, 16, c.resolve / CFG.resolveMax, ready ? '#ff7ad9' : '#9a5bb0', `RESOLVE ${Math.round(c.resolve)}${ready ? '  [SPACE = STRIKE]' : ''}`);
+  bar(ctx, rx, y, (W - 72) / 2, 16, c.resolve / c.resolveMax, ready ? '#ff7ad9' : '#9a5bb0', `RESOLVE ${Math.round(c.resolve)}${ready ? '  [SPACE = STRIKE]' : ''}`);
 }
 
 function drawWards(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {

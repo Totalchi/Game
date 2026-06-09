@@ -50,6 +50,19 @@ export const TRIAL_PROFILE: AttackProfile = {
   elements: [...ELEMENTS],
 };
 
+/** The Practice metronome — gentle, readable, all elements; for the training hall. */
+export const PRACTICE_PROFILE: AttackProfile = {
+  name: 'Metronome',
+  baseSpacing: 4,
+  minSpacing: 3,
+  lead: 3,
+  feintChance: 0.12,
+  splitChance: 0.08,
+  primaryBias: 0,
+  basePower: 10,
+  elements: [...ELEMENTS],
+};
+
 /** Build the attack profile for an enemy from its element + signature. */
 export function profileFor(element: Element, signatureId?: string): AttackProfile {
   if (signatureId === 'unmaking' || element === 'hollow') {

@@ -8,9 +8,10 @@ import { Audio } from './audio';
 import { SPECIES, STARTER_IDS, RARITY_COLOR, type Rarity } from '../data/species';
 import { makeMon, statsOf, gainXp, type Mon } from '../core/mon';
 import { ELEMENT_CURSE, type CurseId } from '../core/curses';
-import { profileFor, TRIAL_PROFILE } from '../core/patterns';
+import { profileFor, TRIAL_PROFILE, PRACTICE_PROFILE } from '../core/patterns';
 import { BEATS, HUNT_BOSSES, type Beat } from '../core/story';
 import { ELEMENT_COLOR } from './colors';
+import { Fx } from './fx';
 import { Overworld } from './overworld';
 import { loadGame, saveGame } from './save';
 import { STRUCTURES, TIER_FLAVOUR } from '../core/sanctuary';
@@ -67,8 +68,13 @@ let beatQueue: Beat[] = [];
 let pendingBossStart: Mon | null = null;
 let currentBossId: string | null = null;
 let pendingVictoryBeat: Beat | null = null;
-let trialDaily = false;
+type TrialKind = 'trial' | 'daily' | 'practice';
+let trialKind: TrialKind = 'trial';
 let trialEnded = false;
+
+// Visual juice (cosmetic only — never touches the sim).
+const fx = new Fx();
+let lastFloatSeen = 0;
 
 function queueBeat(b: Beat): void {
   beatQueue.push(b);
@@ -159,6 +165,7 @@ function startBattle(now: number, wildMon: Mon): void {
   combat.playerVigor = teamVigor[battleActive];
   heldWards.clear();
   lastTick = -1;
+  lastFloatSeen = 0;
   levelMsg = '';
   scene = 'battle';
 }
@@ -202,6 +209,7 @@ function startRite(now: number): void {
   riteResolved = false;
   heldWards.clear();
   lastTick = -1;
+  lastFloatSeen = 0;
   scene = 'rite';
 }
 
@@ -217,30 +225,33 @@ function returnToOverworld(): void {
   currentBossId = null;
 }
 
-function startTrial(now: number, daily: boolean): void {
+function startTrial(now: number, kind: TrialKind): void {
   const active = roster.active();
   const s = statsOf(active);
-  trialDaily = daily;
+  trialKind = kind;
   trialEnded = false;
-  const seed = daily ? dailySeed() : Math.floor(Math.random() * 1e9);
+  const practice = kind === 'practice';
+  const seed = kind === 'daily' ? dailySeed() : Math.floor(Math.random() * 1e9);
   combat = new Combat(now, {
     playerElement: s.element,
     autoDirector: true,
     stats: playerStats(active),
-    enemy: { vigor: 1e9, powerMult: 1 },
-    profile: TRIAL_PROFILE,
+    enemy: { vigor: 1e9, powerMult: practice ? 0 : 1 }, // practice: harmless metronome
+    profile: practice ? PRACTICE_PROFILE : TRIAL_PROFILE,
     seed,
+    tickMs: practice ? 800 : undefined, // a slower Knell to learn on
   });
   heldWards.clear();
   lastTick = -1;
+  lastFloatSeen = 0;
   scene = 'trial';
 }
 
 function endTrial(): void {
-  if (trialEnded || !combat) return;
+  if (trialEnded || !combat || trialKind === 'practice') return;
   trialEnded = true;
   const score = combat.perfects;
-  if (trialDaily) {
+  if (trialKind === 'daily') {
     if (records.dailyKey !== dateKey()) {
       records.dailyKey = dateKey();
       records.dailyBest = 0;
@@ -259,8 +270,24 @@ function summonBoss(): void {
   queueBeat({ title: boss.name, text: boss.intro });
 }
 
+function chooseStarter(i: number): void {
+  roster.addCatch(makeMon(STARTERS[i].id, 5));
+  if (!story.hasSeen('intro')) {
+    story.markSeen('intro');
+    queueBeat(BEATS.intro);
+  }
+  persist();
+  overworld = new Overworld();
+  scene = 'overworld';
+}
+
 // ---------- input ----------
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'm' || e.key === 'M') {
+    audio.enabled = !audio.enabled;
+    return;
+  }
+
   // A story beat is showing — any advance key dismisses it; nothing else gets through.
   if (beatQueue.length > 0) {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -271,16 +298,7 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (scene === 'title') {
-    if (e.key === '1' || e.key === '2' || e.key === '3') {
-      roster.addCatch(makeMon(STARTERS[Number(e.key) - 1].id, 5));
-      if (!story.hasSeen('intro')) {
-        story.markSeen('intro');
-        queueBeat(BEATS.intro);
-      }
-      persist();
-      overworld = new Overworld();
-      scene = 'overworld';
-    }
+    if (e.key === '1' || e.key === '2' || e.key === '3') chooseStarter(Number(e.key) - 1);
     return;
   }
 
@@ -295,9 +313,11 @@ window.addEventListener('keydown', (e) => {
       scene = 'skilltree';
       rawKeys.clear();
     } else if (e.key === 't' || e.key === 'T') {
-      startTrial(performance.now(), false);
+      startTrial(performance.now(), 'trial');
     } else if (e.key === 'y' || e.key === 'Y') {
-      startTrial(performance.now(), true);
+      startTrial(performance.now(), 'daily');
+    } else if (e.key === 'p' || e.key === 'P') {
+      startTrial(performance.now(), 'practice');
     }
     return;
   }
@@ -403,6 +423,150 @@ function raiseWardKey(e: KeyboardEvent): void {
   audio.flick();
 }
 
+// ---------- touch / pointer (mobile-web) ----------
+canvas.style.touchAction = 'none';
+let touchWardIdx: number | null = null;
+let touchMoving = false;
+const TOUCH_ARROWS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
+function canvasPos(e: PointerEvent): [number, number] {
+  const r = canvas.getBoundingClientRect();
+  return [((e.clientX - r.left) / r.width) * canvas.width, ((e.clientY - r.top) / r.height) * canvas.height];
+}
+
+/** Mirror of drawWards() geometry: which Ward button sits at (x, y)? */
+function wardIndexAt(x: number, y: number): number | null {
+  const W = canvas.width;
+  const H = canvas.height;
+  const gap = 10;
+  const bw = (W - 48 - gap * 5) / 6;
+  const y0 = H - 96;
+  if (y < y0 || y > y0 + 54) return null;
+  for (let i = 0; i < ELEMENTS.length; i++) {
+    const bx = 24 + i * (bw + gap);
+    if (x >= bx && x <= bx + bw) return i;
+  }
+  return null;
+}
+
+/** Hold-to-walk: move toward the touch, relative to the screen centre. */
+function setTouchMove(x: number, y: number): void {
+  for (const k of TOUCH_ARROWS) rawKeys.delete(k);
+  const dx = x - canvas.width / 2;
+  const dy = y - canvas.height / 2;
+  rawKeys.add(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft') : (dy > 0 ? 'ArrowDown' : 'ArrowUp'));
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  const [x, y] = canvasPos(e);
+  const now = performance.now();
+
+  if (beatQueue.length > 0) {
+    advanceBeat();
+    return;
+  }
+
+  if (scene === 'title') {
+    const W = canvas.width;
+    for (let i = 0; i < STARTERS.length; i++) {
+      const cx0 = W / 2 - 300 + i * 200;
+      if (x >= cx0 && x <= cx0 + 180 && y >= 264 && y <= 424) {
+        chooseStarter(i);
+        return;
+      }
+    }
+    return;
+  }
+
+  if (scene === 'overworld') {
+    touchMoving = true;
+    setTouchMove(x, y);
+    return;
+  }
+
+  if (scene === 'sanctuary') {
+    if (y > canvas.height - 50) {
+      scene = 'overworld';
+      rawKeys.clear();
+      return;
+    }
+    const i = Math.floor((y - 140) / 76);
+    if (i >= 0 && i < STRUCTURES.length && x >= 80 && x <= canvas.width - 80) {
+      if (i === sanctSel) {
+        if (sanctuary.upgrade(STRUCTURES[i].id)) persist();
+      } else sanctSel = i;
+    }
+    return;
+  }
+
+  if (scene === 'skilltree') {
+    if (y > canvas.height - 30) {
+      scene = 'overworld';
+      rawKeys.clear();
+      return;
+    }
+    const i = Math.floor((y - 80) / 31);
+    if (i >= 0 && i < SKILL_NODES.length && x >= 40 && x <= canvas.width - 40) {
+      if (i === skillSel) {
+        if (skills.buy(SKILL_NODES[i].id)) persist();
+      } else skillSel = i;
+    }
+    return;
+  }
+
+  // Combat-ish scenes: end states first, then Wards, then Strike.
+  if (scene === 'battle' && combat && combat.phase !== 'playing') {
+    returnToOverworld();
+    return;
+  }
+  if (scene === 'rite' && rite && rite.finished) {
+    returnToOverworld();
+    return;
+  }
+  if (scene === 'trial' && combat && combat.phase === 'lost') {
+    returnToOverworld();
+    return;
+  }
+
+  const wi = wardIndexAt(x, y);
+  if (wi !== null) {
+    touchWardIdx = wi;
+    const el = ELEMENTS[wi];
+    if ((scene === 'battle' || scene === 'trial') && combat) combat.raiseWard(el, now);
+    else if (scene === 'rite' && rite) rite.raiseWard(el, now);
+    audio.flick();
+    return;
+  }
+  // Tap the Resolve bar to Strike (battle only).
+  if (scene === 'battle' && combat && y >= canvas.height - 150 && y <= canvas.height - 110 && x >= 462) {
+    combat.strike(now);
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (touchMoving && scene === 'overworld') {
+    const [x, y] = canvasPos(e);
+    setTouchMove(x, y);
+  }
+});
+
+function endTouch(): void {
+  if (touchMoving) {
+    for (const k of TOUCH_ARROWS) rawKeys.delete(k);
+    touchMoving = false;
+  }
+  if (touchWardIdx !== null) {
+    const el = ELEMENTS[touchWardIdx];
+    const now = performance.now();
+    if ((scene === 'battle' || scene === 'trial') && combat) combat.releaseWard(el, now);
+    else if (scene === 'rite' && rite) rite.releaseWard(el, now);
+    touchWardIdx = null;
+  }
+}
+canvas.addEventListener('pointerup', endTouch);
+canvas.addEventListener('pointercancel', endTouch);
+
 // ---------- title ----------
 function drawTitle(): void {
   const W = canvas.width;
@@ -421,7 +585,7 @@ function drawTitle(): void {
   ctx.fillText('Explore (arrows/WASD) · Tall grass = wild Wraiths · Tab/Q/E switch Wraith', W / 2, 160);
   ctx.fillText('Battle: Ward (1–6) on the beat · SPACE Strike · weaken it, then bind it', W / 2, 182);
   ctx.fillStyle = '#ffd54a';
-  ctx.fillText('Choose your first Wraith — press 1, 2 or 3', W / 2, 228);
+  ctx.fillText('Choose your first Wraith — press 1, 2 or 3, or tap a card', W / 2, 228);
 
   STARTERS.forEach((s, i) => {
     const x = W / 2 - 300 + i * 200;
@@ -481,7 +645,7 @@ function drawOverworldHud(stutter: boolean): void {
   ctx.fillStyle = '#ffd54a';
   ctx.fillText(`◆ ${sanctuary.beacon}   ✸ ${skills.insight}`, W - 12, 14);
   ctx.fillStyle = '#7a7a8a';
-  ctx.fillText('Sanctuary: top-left · K Skills · T Trials · Y Daily · Tab switch', W - 12, 26);
+  ctx.fillText('Sanctuary ↖ · K skills · T trials · Y daily · P practice · M mute · Tab switch', W - 12, 26);
 }
 
 function drawSanctuary(): void {
@@ -655,10 +819,10 @@ function buildTrialInfo() {
     wraithName: a.name,
     wraithLevel: a.level,
     signatureName: a.signature?.name,
-    enemyName: 'THE GAUNTLET',
+    enemyName: trialKind === 'practice' ? 'THE METRONOME' : 'THE GAUNTLET',
     enemyLevel: 0,
     enemyElement: 'hollow' as const,
-    enemyRarity: trialDaily ? 'daily' : 'trial',
+    enemyRarity: trialKind,
     enemyRarityColor: '#c77dff',
     enemyProfile: combat!.profileName,
     party,
@@ -669,8 +833,46 @@ function drawTrialOverlay(): void {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffd54a';
   ctx.font = 'bold 15px ui-monospace, monospace';
-  const best = trialDaily ? records.dailyBest : records.trialBest;
-  ctx.fillText(`${trialDaily ? 'DAILY WARD' : 'TRIALS'}  ·  Perfects ${combat!.perfects}  ·  Streak ${combat!.bestStreak}  ·  Best ${best}`, canvas.width / 2, 16);
+  const title = trialKind === 'daily' ? 'DAILY WARD' : trialKind === 'practice' ? 'PRACTICE · SLOW KNELL (800ms) · ESC to leave' : 'TRIALS';
+  const best = trialKind === 'daily' ? records.dailyBest : records.trialBest;
+  const bestPart = trialKind === 'practice' ? '' : `  ·  Best ${best}`;
+  ctx.fillText(`${title}  ·  Perfects ${combat!.perfects}  ·  Streak ${combat!.bestStreak}${bestPart}`, canvas.width / 2, 16);
+}
+
+/** Turn new combat floats (grade events) into juice. Cosmetic only. */
+function pumpFx(c: Combat, now: number): void {
+  const W = canvas.width;
+  const nx = W - 120; // the NOW line
+  const ny = 165;
+  for (const f of c.floats) {
+    if (f.id <= lastFloatSeen) continue;
+    lastFloatSeen = f.id;
+    switch (f.kind) {
+      case 'perfect':
+        fx.burst(nx, ny, '#ffd54a', 18, now);
+        fx.flash('#ffd54a', 0.1, 110, now);
+        fx.shake(3, 130, now);
+        break;
+      case 'clean':
+        fx.burst(nx, ny, '#8be9fd', 8, now);
+        break;
+      case 'graze':
+        fx.burst(nx, ny, '#ffa657', 8, now);
+        fx.shake(2, 100, now);
+        break;
+      case 'miss':
+        fx.flash('#ff3344', 0.22, 170, now);
+        fx.shake(9, 230, now);
+        audio.hit();
+        break;
+      case 'strike':
+        fx.burst(W / 2, 57, '#ff7ad9', 14, now);
+        fx.shake(4, 140, now);
+        break;
+      default:
+        fx.flash('#c77dff', 0.1, 140, now); // a curse landed on you
+    }
+  }
 }
 
 function drawBeat(b: Beat): void {
@@ -700,6 +902,15 @@ function drawBeat(b: Beat): void {
 function loop(): void {
   const now = performance.now();
 
+  // Screenshake: translate the whole frame; particles ride along, flash sits on top.
+  const [ox, oy] = fx.offset(now);
+  if (ox !== 0 || oy !== 0) {
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.save();
+  ctx.translate(Math.round(ox), Math.round(oy));
+
   if (scene === 'title') {
     drawTitle();
   } else if (scene === 'overworld' && overworld) {
@@ -728,6 +939,7 @@ function loop(): void {
     const before = combat.perfects;
     combat.update(now);
     if (combat.perfects > before) audio.perfect();
+    pumpFx(combat, now);
     tickAudio(combat.tickIndexAt(now), combat.phase === 'playing');
 
     // Forced swap on faint if a teammate is still standing.
@@ -758,6 +970,7 @@ function loop(): void {
     const before = combat.perfects;
     combat.update(now);
     if (combat.perfects > before) audio.perfect();
+    pumpFx(combat, now);
     tickAudio(combat.tickIndexAt(now), combat.phase === 'playing');
     render(ctx, combat, now, buildTrialInfo());
     drawTrialOverlay();
@@ -769,7 +982,7 @@ function loop(): void {
       ctx.fillText('GAUNTLET OVER', canvas.width / 2, canvas.height / 2 - 6);
       ctx.fillStyle = '#cfd2e0';
       ctx.font = '15px ui-monospace, monospace';
-      const best = trialDaily ? records.dailyBest : records.trialBest;
+      const best = trialKind === 'daily' ? records.dailyBest : records.trialBest;
       ctx.fillText(`Perfects: ${combat.perfects}   ·   Best: ${best}`, canvas.width / 2, canvas.height / 2 + 26);
       ctx.fillText('Press  ENTER  to return', canvas.width / 2, canvas.height / 2 + 52);
     }
@@ -777,6 +990,7 @@ function loop(): void {
     const before = rite.combat.perfects;
     rite.update(now);
     if (rite.combat.perfects > before) audio.perfect();
+    pumpFx(rite.combat, now);
     tickAudio(rite.combat.tickIndexAt(now), !rite.finished);
     renderRite(ctx, rite, now, { wildName: statsOf(wild).name, wildElement: statsOf(wild).element });
 
@@ -801,6 +1015,10 @@ function loop(): void {
       ctx.fillText(levelMsg, canvas.width / 2, canvas.height / 2 + 60);
     }
   }
+
+  fx.drawParticles(ctx, now);
+  ctx.restore();
+  fx.drawFlash(ctx, now, canvas.width, canvas.height);
 
   if (beatQueue.length > 0) drawBeat(beatQueue[0]); // story beat overlays everything
 

@@ -31,6 +31,8 @@ export interface CombatOptions {
   enemy?: Partial<EnemyStats>;
   /** The enemy's attack pattern (per-Wraith rhythm). Defaults to a balanced profile. */
   profile?: AttackProfile;
+  /** Tick length in ms. Defaults to the 600ms Knell; practice mode may slow it. */
+  tickMs?: number;
 }
 
 export interface PlayerStats {
@@ -74,6 +76,7 @@ function defaultPlayerStats(p?: Partial<PlayerStats>): PlayerStats {
 export class Combat {
   playerElement: Element;
   readonly startTime: number;
+  readonly tickMs: number;
 
   phase: Phase = 'playing';
   aether: number;
@@ -116,6 +119,7 @@ export class Combat {
   constructor(now: number, opts: CombatOptions) {
     this.playerElement = opts.playerElement;
     this.startTime = now;
+    this.tickMs = opts.tickMs ?? CFG.tickMs;
     this.now = now;
     this.lastUpdate = now;
     this.rng = makeRng(opts.seed ?? 1);
@@ -152,6 +156,11 @@ export class Combat {
   /** The enemy's attack-pattern name (for the HUD). */
   get profileName(): string {
     return this.profile.name;
+  }
+
+  /** Resolve cap for the active Wraith (renderer uses this for the bar). */
+  get resolveMax(): number {
+    return this.ps.resolveMax;
   }
 
   // ---- curses ----
@@ -194,14 +203,14 @@ export class Combat {
 
   // ---- time helpers ----
   tickIndexAt(t: number): number {
-    return Math.floor((t - this.startTime) / CFG.tickMs);
+    return Math.floor((t - this.startTime) / this.tickMs);
   }
   timeOfTick(i: number): number {
-    return this.startTime + i * CFG.tickMs;
+    return this.startTime + i * this.tickMs;
   }
   /** 0..1 progress through the current tick — used by the renderer for the Knell pulse. */
   tickProgress(): number {
-    const x = (this.now - this.startTime) / CFG.tickMs;
+    const x = (this.now - this.startTime) / this.tickMs;
     return x - Math.floor(x);
   }
 
@@ -277,7 +286,7 @@ export class Combat {
 
     // Flip feints on their final beat (display only).
     for (const t of this.telegraphs) {
-      if (t.feintFrom && !t.flipped && now >= this.timeOfTick(t.landingTick) - CFG.tickMs) {
+      if (t.feintFrom && !t.flipped && now >= this.timeOfTick(t.landingTick) - this.tickMs) {
         t.flipped = true;
       }
     }
@@ -411,6 +420,6 @@ export class Combat {
 
   private pruneIntervals(now: number): void {
     // Keep only intervals that could still matter (recent), cap memory.
-    this.intervals = this.intervals.filter((iv) => (iv.end ?? now) > now - 2 * CFG.tickMs);
+    this.intervals = this.intervals.filter((iv) => (iv.end ?? now) > now - 2 * this.tickMs);
   }
 }
