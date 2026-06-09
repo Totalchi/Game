@@ -8,7 +8,8 @@ import { Audio } from './audio';
 import { SPECIES, STARTER_IDS, RARITY_COLOR, type Rarity } from '../data/species';
 import { makeMon, statsOf, gainXp, type Mon } from '../core/mon';
 import { ELEMENT_CURSE, type CurseId } from '../core/curses';
-import { profileFor } from '../core/patterns';
+import { profileFor, TRIAL_PROFILE } from '../core/patterns';
+import { BEATS, HUNT_BOSSES, type Beat } from '../core/story';
 import { ELEMENT_COLOR } from './colors';
 import { Overworld } from './overworld';
 import { loadGame, saveGame } from './save';
@@ -30,7 +31,7 @@ ctx.imageSmoothingEnabled = false;
 
 const audio = new Audio();
 
-type Scene = 'title' | 'overworld' | 'battle' | 'rite' | 'sanctuary' | 'skilltree';
+type Scene = 'title' | 'overworld' | 'battle' | 'rite' | 'sanctuary' | 'skilltree' | 'trial';
 let scene: Scene = 'title';
 let sanctSel = 0;
 let overworld: Overworld | null = null;
@@ -50,13 +51,43 @@ const game = loadGame();
 let roster = game.roster;
 let sanctuary = game.sanctuary;
 let skills = game.skills;
+let story = game.story;
+let records = game.records;
 let skillSel = 0;
 if (!roster.isEmpty()) {
   overworld = new Overworld();
   scene = 'overworld';
 }
 function persist(): void {
-  saveGame(roster, sanctuary, skills);
+  saveGame(roster, sanctuary, skills, story, records);
+}
+
+// Story beats (overlay), boss hunt, and Trials state.
+let beatQueue: Beat[] = [];
+let pendingBossStart: Mon | null = null;
+let currentBossId: string | null = null;
+let pendingVictoryBeat: Beat | null = null;
+let trialDaily = false;
+let trialEnded = false;
+
+function queueBeat(b: Beat): void {
+  beatQueue.push(b);
+}
+function advanceBeat(): void {
+  beatQueue.shift();
+  if (beatQueue.length === 0 && pendingBossStart) {
+    const m = pendingBossStart;
+    pendingBossStart = null;
+    startBattle(performance.now(), m);
+  }
+}
+function dateKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+function dailySeed(): number {
+  let h = 2166136261;
+  for (const ch of dateKey()) h = (Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0);
+  return h % 1000000;
 }
 
 // ---------- stat helpers ----------
@@ -179,13 +210,73 @@ function returnToOverworld(): void {
   rite = null;
   scene = 'overworld';
   rawKeys.clear();
+  if (pendingVictoryBeat) {
+    queueBeat(pendingVictoryBeat);
+    pendingVictoryBeat = null;
+  }
+  currentBossId = null;
+}
+
+function startTrial(now: number, daily: boolean): void {
+  const active = roster.active();
+  const s = statsOf(active);
+  trialDaily = daily;
+  trialEnded = false;
+  const seed = daily ? dailySeed() : Math.floor(Math.random() * 1e9);
+  combat = new Combat(now, {
+    playerElement: s.element,
+    autoDirector: true,
+    stats: playerStats(active),
+    enemy: { vigor: 1e9, powerMult: 1 },
+    profile: TRIAL_PROFILE,
+    seed,
+  });
+  heldWards.clear();
+  lastTick = -1;
+  scene = 'trial';
+}
+
+function endTrial(): void {
+  if (trialEnded || !combat) return;
+  trialEnded = true;
+  const score = combat.perfects;
+  if (trialDaily) {
+    if (records.dailyKey !== dateKey()) {
+      records.dailyKey = dateKey();
+      records.dailyBest = 0;
+    }
+    if (score > records.dailyBest) records.dailyBest = score;
+  } else if (score > records.trialBest) {
+    records.trialBest = score;
+  }
+  persist();
+}
+
+function summonBoss(): void {
+  const boss = story.nextBoss() ?? HUNT_BOSSES[HUNT_BOSSES.length - 1]; // replayable once cleared
+  currentBossId = boss.id;
+  pendingBossStart = makeMon(boss.speciesId, boss.level);
+  queueBeat({ title: boss.name, text: boss.intro });
 }
 
 // ---------- input ----------
 window.addEventListener('keydown', (e) => {
+  // A story beat is showing — any advance key dismisses it; nothing else gets through.
+  if (beatQueue.length > 0) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      advanceBeat();
+    }
+    return;
+  }
+
   if (scene === 'title') {
     if (e.key === '1' || e.key === '2' || e.key === '3') {
       roster.addCatch(makeMon(STARTERS[Number(e.key) - 1].id, 5));
+      if (!story.hasSeen('intro')) {
+        story.markSeen('intro');
+        queueBeat(BEATS.intro);
+      }
       persist();
       overworld = new Overworld();
       scene = 'overworld';
@@ -203,7 +294,25 @@ window.addEventListener('keydown', (e) => {
       skillSel = 0;
       scene = 'skilltree';
       rawKeys.clear();
+    } else if (e.key === 't' || e.key === 'T') {
+      startTrial(performance.now(), false);
+    } else if (e.key === 'y' || e.key === 'Y') {
+      startTrial(performance.now(), true);
     }
+    return;
+  }
+
+  if (scene === 'trial') {
+    if (!combat) return;
+    if (combat.phase === 'lost') {
+      if (e.key === 'Enter') returnToOverworld();
+      return;
+    }
+    if (e.key === 'Escape') {
+      returnToOverworld();
+      return;
+    }
+    raiseWardKey(e);
     return;
   }
 
@@ -273,12 +382,12 @@ window.addEventListener('keyup', (e) => {
   const el = ELEMENTS[idx];
   heldWards.delete(e.key);
   const now = performance.now();
-  if (scene === 'battle' && combat) combat.releaseWard(el, now);
+  if ((scene === 'battle' || scene === 'trial') && combat) combat.releaseWard(el, now);
   else if (scene === 'rite' && rite) rite.releaseWard(el, now);
   const fallbackKey = [...heldWards].pop();
   if (fallbackKey) {
     const fb = ELEMENTS[KEY_TO_INDEX[fallbackKey]];
-    if (scene === 'battle' && combat) combat.raiseWard(fb, now);
+    if ((scene === 'battle' || scene === 'trial') && combat) combat.raiseWard(fb, now);
     else if (scene === 'rite' && rite) rite.raiseWard(fb, now);
   }
 });
@@ -289,7 +398,7 @@ function raiseWardKey(e: KeyboardEvent): void {
   const el = ELEMENTS[idx];
   heldWards.add(e.key);
   const now = performance.now();
-  if (scene === 'battle' && combat) combat.raiseWard(el, now);
+  if ((scene === 'battle' || scene === 'trial') && combat) combat.raiseWard(el, now);
   else if (scene === 'rite' && rite) rite.raiseWard(el, now);
   audio.flick();
 }
@@ -372,7 +481,7 @@ function drawOverworldHud(stutter: boolean): void {
   ctx.fillStyle = '#ffd54a';
   ctx.fillText(`◆ ${sanctuary.beacon}   ✸ ${skills.insight}`, W - 12, 14);
   ctx.fillStyle = '#7a7a8a';
-  ctx.fillText('Sanctuary: top-left · K: Skill Tree · Tab: switch', W - 12, 26);
+  ctx.fillText('Sanctuary: top-left · K Skills · T Trials · Y Daily · Tab switch', W - 12, 26);
 }
 
 function drawSanctuary(): void {
@@ -534,6 +643,59 @@ function buildBattleInfo() {
   };
 }
 
+function buildTrialInfo() {
+  const ai = roster.activeIndex;
+  const a = statsOf(roster.party[ai]);
+  const party: PartyPip[] = roster.party.map((m, i) => {
+    const s = statsOf(m);
+    const v = i === ai ? combat!.playerVigor : s.vigor;
+    return { name: s.name, element: s.element, vigorFrac: s.vigor ? v / s.vigor : 0, active: i === ai, fainted: i === ai ? combat!.playerVigor <= 0 : false };
+  });
+  return {
+    wraithName: a.name,
+    wraithLevel: a.level,
+    signatureName: a.signature?.name,
+    enemyName: 'THE GAUNTLET',
+    enemyLevel: 0,
+    enemyElement: 'hollow' as const,
+    enemyRarity: trialDaily ? 'daily' : 'trial',
+    enemyRarityColor: '#c77dff',
+    enemyProfile: combat!.profileName,
+    party,
+  };
+}
+
+function drawTrialOverlay(): void {
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd54a';
+  ctx.font = 'bold 15px ui-monospace, monospace';
+  const best = trialDaily ? records.dailyBest : records.trialBest;
+  ctx.fillText(`${trialDaily ? 'DAILY WARD' : 'TRIALS'}  ·  Perfects ${combat!.perfects}  ·  Streak ${combat!.bestStreak}  ·  Best ${best}`, canvas.width / 2, 16);
+}
+
+function drawBeat(b: Beat): void {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.fillStyle = 'rgba(6,6,10,0.82)';
+  ctx.fillRect(0, 0, W, H);
+  const bx = 90;
+  const bw = W - 180;
+  ctx.fillStyle = '#13121c';
+  ctx.fillRect(bx, H / 2 - 90, bw, 180);
+  ctx.strokeStyle = '#c77dff';
+  ctx.strokeRect(bx, H / 2 - 90, bw, 180);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd54a';
+  ctx.font = 'bold 20px ui-monospace, monospace';
+  ctx.fillText(b.title, W / 2, H / 2 - 56);
+  ctx.fillStyle = '#cfd2e0';
+  ctx.font = '13px ui-monospace, monospace';
+  wrapText(ctx, b.text, W / 2, H / 2 - 28, bw - 48, 19);
+  ctx.fillStyle = '#7a7a8a';
+  ctx.font = '12px ui-monospace, monospace';
+  ctx.fillText('— press ENTER —', W / 2, H / 2 + 74);
+}
+
 // ---------- main loop ----------
 function loop(): void {
   const now = performance.now();
@@ -552,7 +714,7 @@ function loop(): void {
       rawKeys.clear();
     } else if (overworld.pendingBoss) {
       overworld.pendingBoss = false;
-      startBattle(now, makeMon('voidmoth', 22)); // the Hollow Shrine boss
+      summonBoss(); // the Hollow Shrine — the Hunt's boss ladder
     } else if (overworld.pendingEncounter) {
       const m = overworld.pendingEncounter;
       overworld.pendingEncounter = null;
@@ -582,9 +744,34 @@ function loop(): void {
 
     if (combat.phase === 'won') {
       applyWinXp();
+      if (currentBossId) {
+        story.defeatBoss(currentBossId);
+        const boss = HUNT_BOSSES.find((b) => b.id === currentBossId);
+        if (boss) pendingVictoryBeat = { title: boss.name, text: boss.victory };
+        persist();
+      }
       startRite(now);
     } else if (combat.phase === 'lost') {
       promptReturn('YOU FELL — press  ENTER');
+    }
+  } else if (scene === 'trial' && combat) {
+    const before = combat.perfects;
+    combat.update(now);
+    if (combat.perfects > before) audio.perfect();
+    tickAudio(combat.tickIndexAt(now), combat.phase === 'playing');
+    render(ctx, combat, now, buildTrialInfo());
+    drawTrialOverlay();
+    if (combat.phase === 'lost') {
+      endTrial();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd54a';
+      ctx.font = 'bold 40px ui-monospace, monospace';
+      ctx.fillText('GAUNTLET OVER', canvas.width / 2, canvas.height / 2 - 6);
+      ctx.fillStyle = '#cfd2e0';
+      ctx.font = '15px ui-monospace, monospace';
+      const best = trialDaily ? records.dailyBest : records.trialBest;
+      ctx.fillText(`Perfects: ${combat.perfects}   ·   Best: ${best}`, canvas.width / 2, canvas.height / 2 + 26);
+      ctx.fillText('Press  ENTER  to return', canvas.width / 2, canvas.height / 2 + 52);
     }
   } else if (scene === 'rite' && rite) {
     const before = rite.combat.perfects;
@@ -599,6 +786,10 @@ function loop(): void {
         const isNew = roster.addCatch(wild);
         sanctuary.addBeacon(12 * sanctuary.beaconMult() * skills.beaconMult()); // Beacon for binding
         skills.addInsight(2); // Insight for binding
+        if (!story.hasSeen('firstbind')) {
+          story.markSeen('firstbind');
+          if (!pendingVictoryBeat) pendingVictoryBeat = BEATS.firstbind;
+        }
         persist();
         if (isNew) levelMsg = (levelMsg ? levelMsg + '  ·  ' : '') + 'New species for the Dex!';
       }
@@ -610,6 +801,8 @@ function loop(): void {
       ctx.fillText(levelMsg, canvas.width / 2, canvas.height / 2 + 60);
     }
   }
+
+  if (beatQueue.length > 0) drawBeat(beatQueue[0]); // story beat overlays everything
 
   requestAnimationFrame(loop);
 }

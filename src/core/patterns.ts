@@ -37,6 +37,19 @@ export const DEFAULT_PROFILE: AttackProfile = withPool('ember', {
   basePower: 14,
 });
 
+/** The Trials gauntlet — endless, brutal, all six elements uniformly. A pure skill check. */
+export const TRIAL_PROFILE: AttackProfile = {
+  name: 'The Gauntlet',
+  baseSpacing: 3,
+  minSpacing: 1,
+  lead: 3,
+  feintChance: 0.4,
+  splitChance: 0.35,
+  primaryBias: 0,
+  basePower: 14,
+  elements: [...ELEMENTS],
+};
+
 /** Build the attack profile for an enemy from its element + signature. */
 export function profileFor(element: Element, signatureId?: string): AttackProfile {
   if (signatureId === 'unmaking' || element === 'hollow') {

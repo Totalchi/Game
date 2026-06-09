@@ -53,8 +53,11 @@ The single most important phase. If this isn't fun, nothing else matters.
 - [x] **The Warding Skill Tree** — spend Insight across 4 branches / 16 nodes (rising cost; ≈650 to
       complete = a long grind); economy/utility/access perks only, never timing. Open with K
 - [x] **World event: Knell Stutter** — rare spawns surge periodically (the hunt loop)
-- [ ] **Trials & Daily Ward** (seeded gauntlets + local leaderboards) — NEXT
-- [ ] **Story/Hunt across the six domains** with narrative beats + bosses — NEXT
+- [x] **Trials & Daily Ward** — endless flick gauntlet (T) + a date-seeded Daily (Y), with persisted
+      local best scores ("leaderboard"); score = Perfects landed
+- [x] **Story & the Hunt** — narrative beats (intro, first bind) + an escalating Hollow-Shrine boss
+      ladder (Pyreon → Brinewraith → Mourne) with intro/victory beats; the Knell steadies at the end
+- [ ] Story/Hunt across all six domains (needs the other 5 domain maps/art)
 - [ ] Per-element Affinity sub-trees & per-Wraith Pacts (extend the grind)
 - [ ] Swap programmer-art for real pixel-art tiles/sprites (needs assets — see ART_BIBLE.md §0)
 - [ ] Conditional/world-event spawns (RARITY.md §4)

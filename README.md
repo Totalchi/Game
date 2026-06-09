@@ -72,9 +72,16 @@ double-hits, a Storm trickster feints and splits, a Stone wall hits slow and hea
 them, never your wallet.
 
 **The Sanctuary:** walk into the building at the top-left to enter your home base. Spend **Beacon**
-(earned from binds & wins) to rebuild five structures — the Aether Font, Whetstone, Archive,
-Knell-Shrine, and the **Hearth**, whose rising tier visibly *lifts the Long Dusk*. Perks boost your
-Wraiths' economy and power (PvE), never your timing — skill stays sacred.
+(earned from binds & wins) to rebuild six structures — the Aether Font, Whetstone, Archive,
+Knell-Shrine, Aviary, and the **Hearth**, whose rising tier visibly *lifts the Long Dusk*. Perks boost
+your Wraiths' economy and power (PvE), never your timing — skill stays sacred.
+
+**Meta & content:** press **K** for the **Warding Skill Tree** (Insight across 4 branches / 16 nodes —
+a long grind, economy/utility only). Press **T** for **Trials** (an endless flick gauntlet) or **Y**
+for the date-seeded **Daily Ward**, both tracking your best score. **Knell Stutter** events surge rare
+spawns. And a **Story/Hunt** runs through it: narrative beats plus an escalating Hollow-Shrine boss
+ladder — Pyreon, Brinewraith, and finally **Mourne, the Hollowed** — after which the Knell steadies:
+*held, not healed.*
 
 > The overworld is intentionally chunky "programmer-art" — it proves the *format* (explore → encounter
 > → flick-battle → return). Real pixel-art tiles/sprites swap in later (see `docs/ART_BIBLE.md` §0).
