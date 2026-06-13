@@ -3,6 +3,7 @@ import type { BindingRite } from '../core/binding';
 import { CFG } from '../core/config';
 import { ELEMENTS, type Element } from '../core/types';
 import { ELEMENT_COLOR, ELEMENT_GLYPH, GRADE_COLOR } from './colors';
+import { drawWraith } from './sprites';
 
 export interface PartyPip {
   name: string;
@@ -22,6 +23,8 @@ export interface RenderInfo {
   enemyRarity?: string;
   enemyRarityColor?: string;
   enemyProfile?: string;
+  enemyHit?: boolean;
+  playerHit?: boolean;
   party: PartyPip[];
 }
 
@@ -43,6 +46,8 @@ export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, in
 
   drawEnemy(ctx, c, info, W);
   drawCurses(ctx, c, now);
+  drawWraith(ctx, W * 0.3, 288, 58, { element: info.enemyElement, t: now, hit: info.enemyHit, facing: 1 });
+  drawWraith(ctx, W * 0.7, 288, 52, { element: c.playerElement, t: now, hit: info.playerHit, facing: -1 });
   drawLane(ctx, c, now, W, H);
   drawKnell(ctx, c, W, H);
   drawBars(ctx, c, W, H);
@@ -287,6 +292,7 @@ export function renderRite(ctx: CanvasRenderingContext2D, rite: BindingRite, now
   ctx.font = '14px ui-monospace, monospace';
   ctx.fillText(`Ward the ${info.wildName}'s strikes to bind it  —  strike ${rite.progressCount()} / ${rite.total}`, W / 2, 54);
 
+  drawWraith(ctx, W / 2, 300, 70, { element: info.wildElement, t: now });
   drawLane(ctx, rite.combat, now, W, H);
   drawKnell(ctx, rite.combat, W, H);
 

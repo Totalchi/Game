@@ -75,6 +75,8 @@ let trialEnded = false;
 // Visual juice (cosmetic only — never touches the sim).
 const fx = new Fx();
 let lastFloatSeen = 0;
+let lastEnemyHit = 0;
+let lastPlayerHit = 0;
 
 function queueBeat(b: Beat): void {
   beatQueue.push(b);
@@ -798,6 +800,8 @@ function buildBattleInfo() {
     enemyRarity: w.aberrant ? 'aberrant' : w.rarity,
     enemyRarityColor: w.aberrant ? '#ff7ad9' : RARITY_COLOR[w.rarity],
     enemyProfile: combat!.profileName,
+    enemyHit: performance.now() - lastEnemyHit < 180,
+    playerHit: performance.now() - lastPlayerHit < 180,
     party,
   };
 }
@@ -820,6 +824,7 @@ function buildTrialInfo() {
     enemyRarity: trialKind,
     enemyRarityColor: '#c77dff',
     enemyProfile: combat!.profileName,
+    playerHit: performance.now() - lastPlayerHit < 180,
     party,
   };
 }
@@ -854,15 +859,18 @@ function pumpFx(c: Combat, now: number): void {
       case 'graze':
         fx.burst(nx, ny, '#ffa657', 8, now);
         fx.shake(2, 100, now);
+        lastPlayerHit = now;
         break;
       case 'miss':
         fx.flash('#ff3344', 0.22, 170, now);
         fx.shake(9, 230, now);
         audio.hit();
+        lastPlayerHit = now;
         break;
       case 'strike':
         fx.burst(W / 2, 57, '#ff7ad9', 14, now);
         fx.shake(4, 140, now);
+        lastEnemyHit = now;
         break;
       default:
         fx.flash('#c77dff', 0.1, 140, now); // a curse landed on you
