@@ -23,6 +23,10 @@ const STARTERS = STARTER_IDS.map((id) => SPECIES[id]);
 const SWAP_AETHER_COST = 15;
 const SANCT_LIST_Y = 212; // shared by drawSanctuary() and its touch hit-test
 const SANCT_ROW_H = 62;
+const SKILL_LIST_Y = 78; // shared by drawSkillTree() and its touch hit-test
+const SKILL_ROW_H = 26;
+const SKILL_VISIBLE = 18; // rows visible before scrolling
+let skillScroll = 0;
 
 const app = document.getElementById('app')!;
 const canvas = document.createElement('canvas');
@@ -511,7 +515,7 @@ canvas.addEventListener('pointerdown', (e) => {
       rawKeys.clear();
       return;
     }
-    const i = Math.floor((y - 80) / 31);
+    const i = skillScroll + Math.floor((y - SKILL_LIST_Y) / SKILL_ROW_H);
     if (i >= 0 && i < SKILL_NODES.length && x >= 40 && x <= canvas.width - 40) {
       if (i === skillSel) {
         if (skills.buy(SKILL_NODES[i].id)) persist();
@@ -807,58 +811,64 @@ function drawSkillTree(): void {
   ctx.font = '13px ui-monospace, monospace';
   ctx.fillText(`✸ ${skills.insight} Insight   ·   completed ${Math.round((skills.spent() / total) * 100)}%  (${skills.spent()} / ${total})`, W / 2, 62);
 
+  // keep the selected node within the scroll window
+  if (skillSel < skillScroll) skillScroll = skillSel;
+  else if (skillSel >= skillScroll + SKILL_VISIBLE) skillScroll = skillSel - SKILL_VISIBLE + 1;
+
   const x = 40;
-  let y = 80;
-  const rowH = 31;
   const rowW = W - 80;
-  SKILL_NODES.forEach((n, i) => {
+  const last = Math.min(SKILL_NODES.length, skillScroll + SKILL_VISIBLE);
+  for (let i = skillScroll; i < last; i++) {
+    const n = SKILL_NODES[i];
+    const y = SKILL_LIST_Y + (i - skillScroll) * SKILL_ROW_H;
     const rank = skills.rankOf(n.id);
     const sel = i === skillSel;
     const locked = !skills.prereqMet(n.id);
     ctx.fillStyle = sel ? '#1c1c2a' : '#121220';
-    ctx.fillRect(x, y, rowW, rowH - 4);
+    ctx.fillRect(x, y, rowW, SKILL_ROW_H - 4);
     if (sel) {
       ctx.strokeStyle = BRANCH_COLOR[n.branch];
       ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, rowW, rowH - 4);
+      ctx.strokeRect(x, y, rowW, SKILL_ROW_H - 4);
       ctx.lineWidth = 1;
     }
-    // branch dot
     ctx.fillStyle = BRANCH_COLOR[n.branch];
-    ctx.fillRect(x + 8, y + 8, 10, 10);
-    // name
+    ctx.fillRect(x + 8, y + 6, 9, 9);
     ctx.textAlign = 'left';
     ctx.fillStyle = locked ? '#5a5a66' : '#e8e8f0';
-    ctx.font = 'bold 13px ui-monospace, monospace';
-    ctx.fillText(n.name, x + 26, y + 18);
-    // rank dots
+    ctx.font = 'bold 12px ui-monospace, monospace';
+    ctx.fillText(n.name, x + 24, y + 15);
     let dots = '';
     for (let d = 0; d < n.maxRank; d++) dots += d < rank ? '▰' : '▱';
     ctx.fillStyle = BRANCH_COLOR[n.branch];
-    ctx.font = '12px ui-monospace, monospace';
-    ctx.fillText(dots, x + 200, y + 18);
-    // desc
+    ctx.font = '11px ui-monospace, monospace';
+    ctx.fillText(dots, x + 190, y + 15);
     ctx.fillStyle = '#8a8a98';
-    ctx.fillText(n.desc, x + 290, y + 18);
-    // right status
+    ctx.fillText(n.desc, x + 280, y + 15);
     ctx.textAlign = 'right';
     if (skills.isMaxed(n.id)) {
       ctx.fillStyle = '#6fcf57';
-      ctx.fillText('MAX', x + rowW - 12, y + 18);
+      ctx.fillText('MAX', x + rowW - 12, y + 15);
     } else if (locked) {
       ctx.fillStyle = '#7a5a3a';
-      ctx.fillText('LOCKED', x + rowW - 12, y + 18);
+      ctx.fillText('LOCKED', x + rowW - 12, y + 15);
     } else {
       ctx.fillStyle = skills.canBuy(n.id) ? '#ffd54a' : '#7a6a3a';
-      ctx.fillText(`✸ ${skills.costOf(n.id)}`, x + rowW - 12, y + 18);
+      ctx.fillText(`✸ ${skills.costOf(n.id)}`, x + rowW - 12, y + 15);
     }
-    y += rowH;
-  });
+  }
+  // scroll hint
+  if (SKILL_NODES.length > SKILL_VISIBLE) {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#5a5a66';
+    ctx.font = '11px ui-monospace, monospace';
+    ctx.fillText(`${skillSel + 1}/${SKILL_NODES.length}`, W - 12, H - 30);
+  }
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#7a7a8a';
   ctx.font = '12px ui-monospace, monospace';
-  ctx.fillText('↑/↓ select   ·   ENTER learn   ·   ESC / K  leave   ·   earn Insight by battling & binding', W / 2, H - 16);
+  ctx.fillText('↑/↓ select   ·   ENTER learn   ·   ESC / K  leave   ·   Insight from battles & binds', W / 2, H - 14);
 }
 
 function buildBattleInfo() {
