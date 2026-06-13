@@ -57,11 +57,14 @@ The single most important phase. If this isn't fun, nothing else matters.
       local best scores ("leaderboard"); score = Perfects landed
 - [x] **Story & the Hunt** — narrative beats (intro, first bind) + an escalating Hollow-Shrine boss
       ladder (Pyreon → Brinewraith → Mourne) with intro/victory beats; the Knell steadies at the end
+- [x] **Procedural creature sprites** in battle & rite (element-tinted pixel-spirits) — art upgrade, zero assets
+- [x] **Living homebase** — the Sanctuary visibly rebuilds (Hearth/windows/markers/survivors) as it tiers up
+- [x] **Save hardening + SECURITY.md** — untrusted localStorage sanitized/clamped; no crash on tampered/old saves
+- [x] Extra story beats (first Ascension, first rare) + party levels shown in the HUD
+- [x] Skill tree deepened to 21 nodes (~865 Insight to complete) with a scrollable list
+- [ ] Swap procedural sprites for hand/Higgsfield pixel-art tiles & creatures (ART_BIBLE.md §0)
+- [ ] Per-element Affinity sub-trees & per-Wraith Pacts (extend the grind further)
 - [ ] Story/Hunt across all six domains (needs the other 5 domain maps/art)
-- [ ] Per-element Affinity sub-trees & per-Wraith Pacts (extend the grind)
-- [ ] Swap programmer-art for real pixel-art tiles/sprites (needs assets — see ART_BIBLE.md §0)
-- [ ] Conditional/world-event spawns (RARITY.md §4)
-- [ ] A fuller Story/Hunt across the six domains
 
 **Gate:** a player will catch, build a team, and finish the intro Hunt — and want more.
 
