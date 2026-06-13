@@ -23,6 +23,18 @@ export const BEATS: Record<string, Beat> = {
       'Your first Wraith yields — not broken, but bound. A fragment of a dead god, given a reason to exist again. ' +
       'Somewhere east, a shrine hums with the Hollow. The Hunt begins.',
   },
+  firstascend: {
+    title: 'Ascension',
+    text:
+      'Your Wraith convulses and re-forms — larger, older, its dead element burning brighter. ' +
+      'Bound spirits remember what they were, and grow back toward it. Power, returning to a dying world.',
+  },
+  firstrare: {
+    title: 'A Rarer Echo',
+    text:
+      'This one was no common shade. Rarer Wraiths carry deeper echoes of the Sundering — and bind harder. ' +
+      'Hunt the Knell Stutters and the eclipses; the rarest of all still wait in the dark.',
+  },
 };
 
 export interface HuntBoss {

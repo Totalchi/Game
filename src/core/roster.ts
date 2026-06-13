@@ -76,11 +76,11 @@ export class Roster {
     return n;
   }
 
-  /** Party display labels (name + current species element via stats). */
-  partyLabels(): { name: string; element: Element; active: boolean }[] {
+  /** Party display labels (name + current species element + level). */
+  partyLabels(): { name: string; element: Element; level: number; active: boolean }[] {
     return this.party.map((m, i) => {
       const s = statsOf(m);
-      return { name: s.name, element: s.element, active: i === this.activeIndex };
+      return { name: s.name, element: s.element, level: s.level, active: i === this.activeIndex };
     });
   }
 

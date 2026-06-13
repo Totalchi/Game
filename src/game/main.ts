@@ -21,6 +21,8 @@ const KEY_TO_INDEX: Record<string, number> = { '1': 0, '2': 1, '3': 2, '4': 3, '
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd']);
 const STARTERS = STARTER_IDS.map((id) => SPECIES[id]);
 const SWAP_AETHER_COST = 15;
+const SANCT_LIST_Y = 212; // shared by drawSanctuary() and its touch hit-test
+const SANCT_ROW_H = 62;
 
 const app = document.getElementById('app')!;
 const canvas = document.createElement('canvas');
@@ -67,7 +69,7 @@ function persist(): void {
 let beatQueue: Beat[] = [];
 let pendingBossStart: Mon | null = null;
 let currentBossId: string | null = null;
-let pendingVictoryBeat: Beat | null = null;
+let pendingBeats: Beat[] = []; // shown after returning to the overworld
 type TrialKind = 'trial' | 'daily' | 'practice';
 let trialKind: TrialKind = 'trial';
 let trialEnded = false;
@@ -197,8 +199,10 @@ function applyWinXp(): void {
   const wRarity = statsOf(wild).rarity;
   const gain = Math.round((8 + statsOf(wild).level * 3) * sanctuary.xpMult() * skills.xpMult()); // Archive + Scholar
   const res = gainXp(aMon, gain);
-  if (res.ascended) levelMsg = `${res.ascended.fromName} ascended into ${res.ascended.toName}!`;
-  else if (res.leveledTo.length) levelMsg = `${statsOf(aMon).name} reached Lv${aMon.level}!`;
+  if (res.ascended) {
+    levelMsg = `${res.ascended.fromName} ascended into ${res.ascended.toName}!`;
+    tellOnce('firstascend', BEATS.firstascend);
+  } else if (res.leveledTo.length) levelMsg = `${statsOf(aMon).name} reached Lv${aMon.level}!`;
   sanctuary.addBeacon(6 * sanctuary.beaconMult() * skills.beaconMult()); // Beacon for the win
   skills.addInsight(wRarity === 'mythic' ? 5 : wRarity === 'revenant' ? 3 : 1); // Insight from battle
   persist();
@@ -220,11 +224,16 @@ function returnToOverworld(): void {
   rite = null;
   scene = 'overworld';
   rawKeys.clear();
-  if (pendingVictoryBeat) {
-    queueBeat(pendingVictoryBeat);
-    pendingVictoryBeat = null;
-  }
+  for (const b of pendingBeats) queueBeat(b);
+  pendingBeats = [];
   currentBossId = null;
+}
+
+/** Queue a one-time story beat (by id) to show after the player returns to the overworld. */
+function tellOnce(id: string, beat: Beat): void {
+  if (story.hasSeen(id)) return;
+  story.markSeen(id);
+  pendingBeats.push(beat);
 }
 
 function startTrial(now: number, kind: TrialKind): void {
@@ -487,7 +496,7 @@ canvas.addEventListener('pointerdown', (e) => {
       rawKeys.clear();
       return;
     }
-    const i = Math.floor((y - 140) / 76);
+    const i = Math.floor((y - SANCT_LIST_Y) / SANCT_ROW_H);
     if (i >= 0 && i < STRUCTURES.length && x >= 80 && x <= canvas.width - 80) {
       if (i === sanctSel) {
         if (sanctuary.upgrade(STRUCTURES[i].id)) persist();
@@ -633,9 +642,9 @@ function drawOverworldHud(stutter: boolean): void {
   let x = 320;
   for (const p of roster.partyLabels()) {
     ctx.fillStyle = p.active ? ELEMENT_COLOR[p.element] : '#6a6a78';
-    const label = p.active ? `▸${p.name}` : p.name;
+    const label = `${p.active ? '▸' : ''}${p.name} ${p.level}`;
     ctx.fillText(label, x, 20);
-    x += ctx.measureText(label).width + 14;
+    x += ctx.measureText(label).width + 12;
   }
 
   ctx.textAlign = 'right';
@@ -663,11 +672,13 @@ function drawSanctuary(): void {
   ctx.fillText(TIER_FLAVOUR[Math.min(tier, TIER_FLAVOUR.length - 1)], W / 2, 80);
   ctx.fillStyle = '#ffd54a';
   ctx.font = 'bold 16px ui-monospace, monospace';
-  ctx.fillText(`◆ ${sanctuary.beacon} Beacon`, W / 2, 106);
+  ctx.fillText(`◆ ${sanctuary.beacon} Beacon`, W / 2, 100);
+
+  drawBasePanorama(60, 112, W - 120, 88, lift);
 
   const x = 80;
-  let y = 140;
-  const rowH = 76;
+  let y = SANCT_LIST_Y;
+  const rowH = SANCT_ROW_H;
   STRUCTURES.forEach((s, i) => {
     const lvl = sanctuary.levelOf(s.id);
     const sel = i === sanctSel;
@@ -710,7 +721,75 @@ function drawSanctuary(): void {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#7a7a8a';
   ctx.font = '13px ui-monospace, monospace';
-  ctx.fillText('↑/↓ select   ·   ENTER upgrade   ·   ESC / B  leave', W / 2, H - 24);
+  ctx.fillText('↑/↓ select   ·   ENTER upgrade   ·   ESC / B / tap-bottom  leave', W / 2, H - 18);
+}
+
+/** A living vignette of the home base — it rebuilds and brightens as you upgrade. */
+function drawBasePanorama(x: number, y: number, w: number, h: number, lift: number): void {
+  const ground = y + h - 14;
+  // sky band
+  const g = ctx.createLinearGradient(0, y, 0, ground);
+  g.addColorStop(0, `rgb(${28 + lift * 60},${20 + lift * 36},${26 + lift * 30})`);
+  g.addColorStop(1, '#15131c');
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#2a2a38';
+  ctx.strokeRect(x, y, w, h);
+  // ground
+  ctx.fillStyle = `rgb(${30 + lift * 20},${36 + lift * 24},${26 + lift * 16})`;
+  ctx.fillRect(x, ground, w, y + h - ground);
+
+  // The Hearth in the centre — a ruin that becomes a lit hall as its tier rises.
+  const tier = sanctuary.levelOf('hearth');
+  const hx = x + w / 2;
+  ctx.fillStyle = tier > 0 ? '#4a4656' : '#2c2a37';
+  ctx.fillRect(hx - 26, ground - 34, 52, 34); // hall
+  ctx.fillStyle = '#5e3326';
+  ctx.beginPath(); // roof
+  ctx.moveTo(hx - 32, ground - 34);
+  ctx.lineTo(hx, ground - 50);
+  ctx.lineTo(hx + 32, ground - 34);
+  ctx.closePath();
+  ctx.fill();
+  // hearth glow / windows light up with tier
+  for (let i = 0; i < 3; i++) {
+    const lit = i < tier;
+    ctx.fillStyle = lit ? '#ffb24a' : '#1a1822';
+    ctx.fillRect(hx - 18 + i * 14, ground - 24, 8, 10);
+  }
+  if (tier >= 5) {
+    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(performance.now() / 300);
+    ctx.fillStyle = '#ffd54a';
+    ctx.beginPath();
+    ctx.arc(hx, ground - 30, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // A small structure marker for each built upgrade, dotted along the base.
+  const built = STRUCTURES.filter((s) => s.id !== 'hearth' && sanctuary.levelOf(s.id) > 0);
+  built.forEach((s, i) => {
+    const side = i % 2 === 0 ? -1 : 1;
+    const bx = hx + side * (60 + Math.floor(i / 2) * 46);
+    const bh = 14 + sanctuary.levelOf(s.id) * 3;
+    ctx.fillStyle = '#3a3746';
+    ctx.fillRect(bx - 12, ground - bh, 24, bh);
+    ctx.fillStyle = '#ffb24a';
+    ctx.fillRect(bx - 4, ground - bh + 4, 3, 4); // a lit window
+    ctx.fillStyle = '#9a9aa8';
+    ctx.font = '8px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(s.name.replace(/^(The |Knell-)/, '').slice(0, 6), bx, ground + 9);
+  });
+
+  // survivors arrive as the dusk lifts
+  if (tier >= 2) {
+    ctx.fillStyle = '#cfd2e0';
+    for (let i = 0; i < Math.min(tier, 4); i++) {
+      const sx = hx - 18 + i * 12;
+      ctx.fillRect(sx, ground - 8, 3, 8);
+    }
+  }
 }
 
 function drawSkillTree(): void {
@@ -962,7 +1041,7 @@ function loop(): void {
       if (currentBossId) {
         story.defeatBoss(currentBossId);
         const boss = HUNT_BOSSES.find((b) => b.id === currentBossId);
-        if (boss) pendingVictoryBeat = { title: boss.name, text: boss.victory };
+        if (boss) pendingBeats.push({ title: boss.name, text: boss.victory });
         persist();
       }
       startRite(now);
@@ -1003,10 +1082,9 @@ function loop(): void {
         const isNew = roster.addCatch(wild);
         sanctuary.addBeacon(12 * sanctuary.beaconMult() * skills.beaconMult()); // Beacon for binding
         skills.addInsight(2); // Insight for binding
-        if (!story.hasSeen('firstbind')) {
-          story.markSeen('firstbind');
-          if (!pendingVictoryBeat) pendingVictoryBeat = BEATS.firstbind;
-        }
+        tellOnce('firstbind', BEATS.firstbind);
+        const rar = statsOf(wild).rarity;
+        if (rar === 'rare' || rar === 'revenant' || rar === 'mythic') tellOnce('firstrare', BEATS.firstrare);
         persist();
         if (isNew) levelMsg = (levelMsg ? levelMsg + '  ·  ' : '') + 'New species for the Dex!';
       }
