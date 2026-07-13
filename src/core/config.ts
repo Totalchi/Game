@@ -25,6 +25,7 @@ export const CFG = {
   // Offense
   strikeCost: 25,
   strikePower: 60,
+  counterOnPerfect: 0.25, // a Perfect flick automatically counters for this fraction of Strike power
 
   // Vigor (HP)
   playerVigor: 100,

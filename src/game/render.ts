@@ -112,45 +112,90 @@ function drawLane(ctx: CanvasRenderingContext2D, c: Combat, now: number, W: numb
   const nowX = W - 120; // the NOW line, where attacks land
   const left = 40;
   const lead = c.hasCurse('static', now) ? 2 * c.tickMs : 3 * c.tickMs; // Static: less lead time
+  const xAt = (remaining: number): number => left + (nowX - left) * (1 - remaining / lead); // far→left, landing→NOW
 
-  // Lane backdrop + NOW line.
-  ctx.fillStyle = '#101019';
+  // Lane backdrop with a subtle gradient toward the NOW line.
+  const lg = ctx.createLinearGradient(left, 0, nowX, 0);
+  lg.addColorStop(0, '#0e0e17');
+  lg.addColorStop(1, '#191420');
+  ctx.fillStyle = lg;
   ctx.fillRect(left, laneY, W - left - 24, laneH);
-  ctx.strokeStyle = '#ffffff';
-  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = '#23232f';
+  ctx.strokeRect(left, laneY, W - left - 24, laneH);
+
+  // Beat gridlines: one line per upcoming Knell, sliding toward NOW.
+  const curTick = Math.floor((now - c.startTime) / c.tickMs);
+  ctx.strokeStyle = '#2e2e40';
+  for (let k = 1; k <= 3; k++) {
+    const rem = c.timeOfTick(curTick + k) - now;
+    if (rem < 0 || rem > lead) continue;
+    const gx = xAt(rem);
+    ctx.beginPath();
+    ctx.moveTo(gx, laneY + 4);
+    ctx.lineTo(gx, laneY + laneH - 4);
+    ctx.stroke();
+  }
+
+  // The NOW line — bright, pulsing with the Knell.
+  const pulse = 1 - c.tickProgress();
+  ctx.strokeStyle = '#ffd54a';
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.55 + pulse * 0.45;
   ctx.beginPath();
-  ctx.moveTo(nowX, laneY - 6);
-  ctx.lineTo(nowX, laneY + laneH + 6);
+  ctx.moveTo(nowX, laneY - 8);
+  ctx.lineTo(nowX, laneY + laneH + 8);
   ctx.stroke();
   ctx.globalAlpha = 1;
-  ctx.fillStyle = '#8a8a9a';
-  ctx.font = '11px ui-monospace, monospace';
+  ctx.lineWidth = 1;
+  ctx.fillStyle = '#ffd54a';
+  ctx.font = 'bold 11px ui-monospace, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('NOW', nowX, laneY - 10);
+  ctx.fillText('NOW', nowX, laneY - 12);
+  ctx.fillStyle = '#5a5a6a';
+  ctx.font = '10px ui-monospace, monospace';
+  ctx.fillText('◀ incoming — flick when it hits NOW', left + 110, laneY - 12);
 
   for (const t of c.telegraphs) {
     const landing = c.timeOfTick(t.landingTick);
     const remaining = landing - now;
-    if (remaining > lead || remaining < -200) continue;
-    const frac = remaining / lead; // 1 = far, 0 = landing
-    const x = nowX - (nowX - left) * (1 - frac);
+    if (remaining > lead || remaining < -250) continue;
+    const x = xAt(Math.max(0, remaining));
     const shown: Element = t.feintFrom && !t.flipped ? t.feintFrom : t.element;
     const col = ELEMENT_COLOR[shown];
-
     const cy = laneY + laneH / 2;
-    const r = 22;
+    const r = 20 + 4 * (1 - Math.min(1, Math.max(0, remaining) / lead)); // grows as it nears
+
+    // motion trail
+    if (!t.resolved) {
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = col;
+      for (let k = 1; k <= 3; k++) {
+        const tx = xAt(Math.min(lead, Math.max(0, remaining) + k * 90));
+        ctx.beginPath();
+        ctx.arc(tx, cy, r - k * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // chip with glow
+    ctx.save();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = t.resolved ? 0 : 14;
     ctx.fillStyle = col;
-    ctx.globalAlpha = t.resolved ? 0.25 : 1;
+    ctx.globalAlpha = t.resolved ? 0.22 : 1;
     ctx.beginPath();
     ctx.arc(x, cy, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.restore();
+    ctx.globalAlpha = t.resolved ? 0.4 : 1;
     ctx.fillStyle = '#0c0b10';
-    ctx.font = 'bold 22px ui-monospace, monospace';
+    ctx.font = 'bold 20px ui-monospace, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(ELEMENT_GLYPH[shown], x, cy + 1);
     ctx.textBaseline = 'alphabetic';
+    ctx.globalAlpha = 1;
 
     if (t.feintFrom && !t.flipped) {
       ctx.fillStyle = '#ffffff';

@@ -136,7 +136,9 @@ function enemyStats(mon: Mon): { vigor: number; powerMult: number; curse: CurseI
     mult += 0.3;
     chance = 0.85;
   }
-  return { vigor: Math.round(s.vigor * 1.8), powerMult: Math.max(0.6, mult), curse: ELEMENT_CURSE[s.element], curseChance: chance };
+  // 1.2x keeps fights snappy (a common falls in ~2 Strikes + Perfect-counters; bosses are a
+  // real barrage but never a sponge).
+  return { vigor: Math.round(s.vigor * 1.2), powerMult: Math.max(0.6, mult), curse: ELEMENT_CURSE[s.element], curseChance: chance };
 }
 
 function riteFor(rarity: Rarity): { count: number; threshold: number } {

@@ -32,6 +32,7 @@ export class BindingRite {
   constructor(now: number, opts: BindingOptions) {
     this.combat = new Combat(now, { playerElement: opts.element, autoDirector: false, seed: opts.seed });
     this.combat.playerVigor = 1e9; // you cannot die during a Rite
+    this.combat.enemyVigor = 1e9; // ...and Perfect-counters can't end it either (the Rite ends by meter)
     this.total = opts.count ?? 5;
     this.threshold = opts.threshold ?? 65;
     this.bindMeter = Math.min(100, 20 + (opts.startBonus ?? 0)); // 20 goodwill + Practised Bind

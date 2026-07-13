@@ -244,7 +244,10 @@ export class Combat {
 
   strike(now: number): boolean {
     if (this.phase !== 'playing') return false;
-    if (this.resolve < CFG.strikeCost) return false;
+    if (this.resolve < CFG.strikeCost) {
+      this.float(`NEED ${CFG.strikeCost} RESOLVE`, 'info', now); // clear feedback instead of a silent no-op
+      return false;
+    }
     this.resolve -= CFG.strikeCost;
     const dmg = Math.round(this.ps.strikePower);
     this.enemyVigor = Math.max(0, this.enemyVigor - dmg);
@@ -371,6 +374,12 @@ export class Combat {
         this.streak++;
         this.bestStreak = Math.max(this.bestStreak, this.streak);
         this.momentum = 0; // a Perfect resets enemy Momentum
+        // Defense feeds offense: a Perfect flick counters for a slice of Strike power.
+        const counter = Math.round(this.ps.strikePower * CFG.counterOnPerfect);
+        if (counter > 0) {
+          this.enemyVigor = Math.max(0, this.enemyVigor - counter);
+          if (this.enemyVigor <= 0) this.phase = 'won';
+        }
       } else {
         this.streak = 0;
       }
