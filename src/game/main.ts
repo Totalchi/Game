@@ -3,7 +3,8 @@ import { Combat, type PlayerStats } from '../core/combat';
 import { CFG } from '../core/config';
 import { BindingRite } from '../core/binding';
 import { ELEMENTS } from '../core/types';
-import { render, renderRite, wardRect, strikeRect, type PartyPip } from './render';
+import { render, renderRite, wardRect, strikeRect, drawMotes, drawVignette, type PartyPip } from './render';
+import { drawWraith } from './sprites';
 import { Audio } from './audio';
 import { SPECIES, STARTER_IDS, RARITY_COLOR, type Rarity } from '../data/species';
 import { makeMon, statsOf, gainXp, type Mon } from '../core/mon';
@@ -583,39 +584,65 @@ canvas.addEventListener('pointercancel', endTouch);
 function drawTitle(): void {
   const W = canvas.width;
   const H = canvas.height;
-  ctx.fillStyle = '#0c0b10';
+  const now = performance.now();
+
+  // Dusk backdrop with drifting embers.
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#1a1428');
+  bg.addColorStop(0.6, '#120f1a');
+  bg.addColorStop(1, '#0b0a10');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+  drawMotes(ctx, W, H, now, '#ff7a4a', 18);
+
+  // The Knell behind the logo — the world's heartbeat, pulsing.
+  const pulse = 1 - ((now / 600) % 1);
+  ctx.fillStyle = `rgba(255, 90, 60, ${0.05 + pulse * 0.09})`;
+  ctx.beginPath();
+  ctx.arc(W / 2, 84, 120 + pulse * 26, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.textAlign = 'center';
+  ctx.save();
+  ctx.shadowColor = '#ffd54a';
+  ctx.shadowBlur = 22;
   ctx.fillStyle = '#ffd54a';
-  ctx.font = 'bold 44px ui-monospace, monospace';
-  ctx.fillText('WARDBOUND', W / 2, 92);
-  ctx.fillStyle = '#9a9aa8';
-  ctx.font = '15px ui-monospace, monospace';
-  ctx.fillText('Flick the tick. Bind the beast.', W / 2, 122);
-  ctx.fillStyle = '#cfd2e0';
+  ctx.font = 'bold 52px ui-monospace, monospace';
+  ctx.fillText('WARDBOUND', W / 2, 96);
+  ctx.restore();
+  ctx.fillStyle = '#b9a7d8';
+  ctx.font = 'italic 15px ui-monospace, monospace';
+  ctx.fillText('Flick the tick. Bind the beast.', W / 2, 126);
+  ctx.fillStyle = '#8f8fa3';
   ctx.font = '13px ui-monospace, monospace';
-  ctx.fillText('Explore (arrows/WASD) · Tall grass = wild Wraiths · Tab/Q/E switch Wraith', W / 2, 160);
-  ctx.fillText('Battle: Ward (1–6) on the beat · SPACE Strike · weaken it, then bind it', W / 2, 182);
+  ctx.fillText('Explore (arrows/WASD) · Tall grass hides wild Wraiths · Tab/Q/E switch', W / 2, 162);
+  ctx.fillText('Battle: Ward (1–6) on the beat · SPACE Strike · weaken it, then bind it', W / 2, 184);
   ctx.fillStyle = '#ffd54a';
-  ctx.fillText('Choose your first Wraith — press 1, 2 or 3, or tap a card', W / 2, 228);
+  ctx.font = 'bold 14px ui-monospace, monospace';
+  ctx.fillText('Choose your first Wraith — press 1, 2 or 3, or tap a card', W / 2, 226);
 
   STARTERS.forEach((s, i) => {
     const x = W / 2 - 300 + i * 200;
     const y = 264;
-    ctx.fillStyle = '#15151f';
+    const hover = Math.sin(now / 400 + i * 2.1) * 3;
+    ctx.fillStyle = '#141220';
     ctx.fillRect(x, y, 180, 160);
     ctx.strokeStyle = ELEMENT_COLOR[s.element];
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, 180, 160);
     ctx.lineWidth = 1;
     ctx.fillStyle = ELEMENT_COLOR[s.element];
-    ctx.font = 'bold 18px ui-monospace, monospace';
-    ctx.fillText(`${i + 1}. ${s.name}`, x + 90, y + 32);
+    ctx.font = 'bold 16px ui-monospace, monospace';
+    ctx.fillText(`${i + 1}. ${s.name}`, x + 90, y + 24);
+    drawWraith(ctx, x + 90, y + 78 + hover, 34, { element: s.element, t: now + i * 500 });
     ctx.fillStyle = '#cfd2e0';
-    ctx.font = '12px ui-monospace, monospace';
-    ctx.fillText(s.element.toUpperCase(), x + 90, y + 54);
-    wrapText(ctx, s.blurb, x + 90, y + 80, 162, 16);
+    ctx.font = '11px ui-monospace, monospace';
+    ctx.fillText(s.element.toUpperCase(), x + 90, y + 126);
+    ctx.fillStyle = '#8f8fa3';
+    wrapText(ctx, s.blurb, x + 90, y + 143, 164, 13);
   });
+
+  drawVignette(ctx, W, H);
 }
 
 function wrapText(c: CanvasRenderingContext2D, text: string, cx: number, y: number, maxW: number, lh: number): void {
@@ -1011,6 +1038,8 @@ function loop(): void {
     overworld.encounterLuck = skills.rareLuck() + sanctuary.lure();
     overworld.update(now, rawKeys);
     overworld.render(ctx, now);
+    drawMotes(ctx, canvas.width, canvas.height, now, overworld.stutterActive(now) ? '#c77dff' : '#ff7a4a', 10);
+    drawVignette(ctx, canvas.width, canvas.height);
     drawOverworldHud(overworld.stutterActive(now));
     if (overworld.pendingSanctuary) {
       overworld.pendingSanctuary = false;

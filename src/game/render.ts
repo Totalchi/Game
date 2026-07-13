@@ -33,16 +33,89 @@ export interface RiteInfo {
   wildElement: Element;
 }
 
+// ---- atmosphere helpers (cached where possible; cosmetic only) ----
+let vignetteCache: HTMLCanvasElement | null = null;
+export function drawVignette(ctx: CanvasRenderingContext2D, W: number, H: number): void {
+  if (!vignetteCache || vignetteCache.width !== W || vignetteCache.height !== H) {
+    vignetteCache = document.createElement('canvas');
+    vignetteCache.width = W;
+    vignetteCache.height = H;
+    const vctx = vignetteCache.getContext('2d')!;
+    const g = vctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.42, W / 2, H / 2, Math.max(W, H) * 0.72);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.42)');
+    vctx.fillStyle = g;
+    vctx.fillRect(0, 0, W, H);
+  }
+  ctx.drawImage(vignetteCache, 0, 0);
+}
+
+/** Slow-drifting ember/ash motes — deterministic from time, no state. */
+export function drawMotes(ctx: CanvasRenderingContext2D, W: number, H: number, now: number, color: string, count = 14): void {
+  ctx.fillStyle = color;
+  for (let i = 0; i < count; i++) {
+    const speed = 12 + (i % 5) * 6;
+    const x = ((i * 173 + now * 0.006 * (10 + (i % 4) * 3)) % (W + 40)) - 20;
+    const y = H - (((i * 97 + now * 0.001 * speed * 16) % (H + 40)) - 20);
+    const s = 1 + (i % 3);
+    ctx.globalAlpha = 0.10 + 0.10 * ((i * 7) % 3) + 0.06 * Math.sin(now / 700 + i);
+    ctx.fillRect(x, y, s, s);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawBattleBackdrop(ctx: CanvasRenderingContext2D, W: number, H: number, now: number, accent: string): void {
+  // Dusk sky with a faint element-tinted band on the horizon.
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#171225');
+  bg.addColorStop(0.55, '#14111c');
+  bg.addColorStop(1, '#0b0a10');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, 236, W, 90);
+  ctx.globalAlpha = 1;
+
+  // Two silhouetted ridge layers.
+  for (const [base, amp, colr, seed] of [
+    [252, 14, '#0f0d18', 0],
+    [286, 20, '#0a0912', 3],
+  ] as const) {
+    ctx.fillStyle = colr;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    for (let x = 0; x <= W; x += 24) {
+      ctx.lineTo(x, base + Math.sin(x / 90 + seed) * amp + Math.sin(x / 37 + seed * 2) * (amp / 3));
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  drawMotes(ctx, W, H, now, accent, 12);
+}
+
+function drawPlatform(ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, color: string): void {
+  ctx.fillStyle = '#0a0910';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, rx * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, rx * 0.3, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
 export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, info: RenderInfo): void {
   const W = ctx.canvas.width;
   const H = ctx.canvas.height;
 
-  // Background (the Long Dusk).
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#14131a');
-  bg.addColorStop(1, '#0c0b10');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
+  drawBattleBackdrop(ctx, W, H, now, ELEMENT_COLOR[info.enemyElement]);
+  drawPlatform(ctx, W * 0.3, 288 + 36, 84, ELEMENT_COLOR[info.enemyElement]);
+  drawPlatform(ctx, W * 0.7, 288 + 34, 74, ELEMENT_COLOR[c.playerElement]);
 
   drawEnemy(ctx, c, info, W);
   drawCurses(ctx, c, now);
@@ -53,6 +126,7 @@ export function render(ctx: CanvasRenderingContext2D, c: Combat, now: number, in
   drawBars(ctx, c, W, H);
   drawWards(ctx, c, W, H);
   drawPlayer(ctx, c, info, W, H);
+  drawVignette(ctx, W, H);
   drawFloats(ctx, c, now, W, H);
 
   if (c.phase !== 'playing') drawEnd(ctx, c, W, H);
@@ -322,11 +396,8 @@ function drawEnd(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number)
 export function renderRite(ctx: CanvasRenderingContext2D, rite: BindingRite, now: number, info: RiteInfo): void {
   const W = ctx.canvas.width;
   const H = ctx.canvas.height;
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0, '#161320');
-  bg.addColorStop(1, '#0c0b10');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
+  drawBattleBackdrop(ctx, W, H, now, ELEMENT_COLOR[info.wildElement]);
+  drawPlatform(ctx, W / 2, 300 + 44, 96, ELEMENT_COLOR[info.wildElement]);
 
   // Title
   ctx.textAlign = 'center';
@@ -338,6 +409,7 @@ export function renderRite(ctx: CanvasRenderingContext2D, rite: BindingRite, now
   ctx.fillText(`Ward the ${info.wildName}'s strikes to bind it  —  strike ${rite.progressCount()} / ${rite.total}`, W / 2, 54);
 
   drawWraith(ctx, W / 2, 300, 70, { element: info.wildElement, t: now });
+  drawVignette(ctx, W, H);
   drawLane(ctx, rite.combat, now, W, H);
   drawKnell(ctx, rite.combat, W, H);
 
