@@ -150,14 +150,15 @@ function drawEnemy(ctx: CanvasRenderingContext2D, c: Combat, info: RenderInfo, W
   ctx.font = 'bold 20px ui-monospace, monospace';
   ctx.textAlign = 'left';
   const profile = info.enemyProfile ? `  ‹${info.enemyProfile}›` : '';
-  ctx.fillText(`${info.enemyName}  Lv${info.enemyLevel}  ${ELEMENT_GLYPH[info.enemyElement]} ${info.enemyElement}${profile}`, 24, 36);
+  const lv = info.enemyLevel > 0 ? `  Lv${info.enemyLevel}` : '';
+  ctx.fillText(`${info.enemyName}${lv}  ${ELEMENT_GLYPH[info.enemyElement]} ${info.enemyElement}${profile}`, 24, 36);
   if (info.enemyRarity && info.enemyRarity !== 'common') {
     ctx.fillStyle = info.enemyRarityColor ?? '#fff';
     ctx.font = 'bold 13px ui-monospace, monospace';
     ctx.textAlign = 'right';
     ctx.fillText(`✦ ${info.enemyRarity.toUpperCase()}`, W - 24, 36);
   }
-  bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / c.enemyVigorMax, '#ff5566', 'WILD WRAITH VIGOR');
+  bar(ctx, 24, 50, W - 48, 14, c.enemyVigor / c.enemyVigorMax, '#ff5566', ''); // the red bar speaks for itself
 }
 
 function drawCurses(ctx: CanvasRenderingContext2D, c: Combat, now: number): void {
@@ -285,17 +286,33 @@ function drawKnell(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: numbe
   const pulse = 1 - p; // bright at the start of each beat
   const cx = W / 2;
   const cy = H / 2 + 10;
-  const r = 26 + pulse * 14;
+  const r = 24 + pulse * 15;
+
+  ctx.save();
+  ctx.shadowColor = '#ff5a3a';
+  ctx.shadowBlur = 10 + pulse * 26;
+  // expanding echo ring
+  ctx.strokeStyle = `rgba(255,122,74,${0.15 + pulse * 0.4})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 10 + p * 16, 0, Math.PI * 2);
+  ctx.stroke();
+  // molten core
+  const g = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.25, 2, cx, cy, r);
+  g.addColorStop(0, `rgba(255,190,130,${0.75 + pulse * 0.25})`);
+  g.addColorStop(0.55, `rgba(230,90,55,${0.55 + pulse * 0.35})`);
+  g.addColorStop(1, 'rgba(110,30,25,0.65)');
+  ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(255, 90, 60, ${0.18 + pulse * 0.5})`;
   ctx.fill();
-  ctx.strokeStyle = '#ff7a4a';
-  ctx.stroke();
+  ctx.restore();
+  ctx.lineWidth = 1;
+
   ctx.fillStyle = '#9a9aa8';
   ctx.font = '11px ui-monospace, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('THE KNELL', cx, cy + r + 18);
+  ctx.fillText('THE KNELL', cx, cy + 58);
 }
 
 function drawBars(ctx: CanvasRenderingContext2D, c: Combat, W: number, H: number): void {
